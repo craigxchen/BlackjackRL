@@ -1,14 +1,14 @@
 from blackjack_complete import CompleteBlackjackEnv
+from collections import defaultdict
 import numpy as np
 import random
 import pickle
 
 class QLearningAgent:
-    def __init__(self, environment, epsilon = 1.0, alpha = 0.1, gamma = 1.0):
+    def __init__(self, environment, epsilon = 1.0, gamma = 1.0):
         self.env = environment
         self.state_space = [(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]
         self.epsilon = epsilon
-        self.alpha = alpha
         self.gamma = gamma
         self.Q = {}
         for s in self.state_space:
@@ -16,15 +16,19 @@ class QLearningAgent:
                 self.Q[s] = [1, -1]
             else:
                 self.Q[s] = [0, 0]
+        self.N = defaultdict(lambda: 0)
+        
         
     def learn(self, state, action, reward, next_state):
         '''
         updates Q-table using standard Q-learning algorithm
         '''
+        self.N[state] += 1
+        alpha = 1/(1 + self.N[state])**0.85
         if state == next_state:
-            self.Q[state][action] = (1 - self.alpha)*self.Q[state][action] + self.alpha*reward
+            self.Q[state][action] = (1 - alpha)*self.Q[state][action] + alpha*reward
         else:
-            self.Q[state][action] = (1 - self.alpha)*self.Q[state][action] + self.alpha*(reward + self.gamma*np.max(self.Q[next_state]))
+            self.Q[state][action] = (1 - alpha)*self.Q[state][action] + alpha*(reward + self.gamma*np.max(self.Q[next_state]))
         return
     
     def policy(self, state):
@@ -53,11 +57,13 @@ class QLearningAgent:
         for idx in range(num_iterations):
             if idx < 0.3*num_iterations:
                 self.epsilon *= 0.999995
+                #self.alpha *= 0.999995
             elif 0.3*num_iterations <= idx < 0.9*num_iterations:
                 self.epsilon *= 0.99995
+                #self.alpha *= 0.99995
             else: 
                 self.epsilon = 0
-                self.alpha = 0
+                #self.alpha = 0
             episode = self.play()
             states, actions, rewards, done = zip(*episode)
             for k in range(len(states)):
