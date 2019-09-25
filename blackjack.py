@@ -6,7 +6,7 @@ import numpy as np
 import random
 import gym
 
-class BlackjackSM:
+class SimpleBlackjackSM:
     def __init__(self, epsilon = 1.0, alpha = 0.1, gamma = 1.0):
         self.env = gym.make("Blackjack-v0")
         self.state_space = [(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]
@@ -75,30 +75,13 @@ class BlackjackSM:
                         elif state[2] == 0:
                             num_draws += 1
         print("Win Rate: {}/{} Draw Rate: {}/{}".format(num_wins, num_games, num_draws, num_games))
-        print("Win Percentage: {:.2f}% Win+Draw: {:.2f}%".format(num_wins/num_games*100, (num_wins+num_draws)/num_games*100))
-        return
-    
-#    def dealer_policy(self):
-#        d_cards = [self.deal_card(), self.deal_card()]
-#        show_card = d_cards[1]
-#        d_sum = np.sum(d_cards)
-#        if d_cards.count(1) >= 1:
-#            usable_ace = True
-#        if d_sum > 17:
-#            done = True
-#        else: 
-#            d_cards.append(self.deal_card())
-#        return
-#    
-    
-    @staticmethod
-    def deal_card():
-        return random.choice(list(range(1,11) + 3*[10]))      
+        print("Win Percentage: {:.2f}% Win+Draw: {:.2f}%".format(num_wins/num_games*100, (num_wins+(num_draws/2))/num_games*100))
+        return  
     
 # %% Main
         
 if __name__ == '__main__':
-    model = BlackjackSM()
+    model = SimpleBlackjackSM()
     num_iterations = 100000
     for idx in range(num_iterations):
         if idx < 0.3*num_iterations:
@@ -119,3 +102,5 @@ if __name__ == '__main__':
     Q = model.Q
     P = dict((k,np.argmax(v)) for k, v in Q.items())
     model.test(P, 100000)
+    
+    ## optimal result w/ flat betting: win 42%
