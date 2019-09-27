@@ -69,12 +69,7 @@ class QLearningAgent:
         self.state_space = self.env.state_space
         self.epsilon = epsilon
         self.gamma = gamma
-        self.Q = {}
-        for s in self.state_space:
-            if s[0] == 21:
-                self.Q[s] = [1, -1]
-            else:
-                self.Q[s] = [0, 0]
+        self.Q = defaultdict(lambda: np.zeros(self.env.action_space.size))
         self.N = defaultdict(lambda: 0)
         
         
