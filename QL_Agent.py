@@ -128,7 +128,7 @@ class QLearningAgent:
             action = np.argmax(self.Q[state])
         return action
     
-    def play(self):
+    def play(self, policy):
         """Goes through one full iteraction with the environment
         
         Runs through a full iteraction with the environment following a specific policy
@@ -146,7 +146,10 @@ class QLearningAgent:
         done = False
         
         while not done:
-            action = self.policy(state)
+            if isinstance(policy, dict):
+                action = policy[state]
+            else:
+                action = policy(state)
             next_state, reward, done = self.env.step(action)
             history.append([state, action, reward, done])
             state = next_state
@@ -173,7 +176,7 @@ class QLearningAgent:
                 self.epsilon *= 0.99995
             else: 
                 self.epsilon = 0
-            episode = self.play()
+            episode = self.play(self.policy)
             states, actions, rewards, done = zip(*episode)
             for k in range(len(states)):
                 if k == len(states) - 1: # if states[k] is the terminal state
@@ -206,7 +209,7 @@ class QLearningAgent:
         num_wins = 0
         num_draws = 0
         for game in range(num_games):
-            path = self.play()
+            path = self.play(policy)
             for idx, state in enumerate(path, start = 1):
                 if output_details:
                     print("Your sum: {}, Dealer showed: {}, Usable Ace? {}".format(state[0][0], state[0][1], state[0][2]))
