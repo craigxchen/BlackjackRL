@@ -13,7 +13,7 @@ class CompleteBlackjackEnv:
         
     def step(self, action):
         assert action in self.action_space
-        if action:  
+        if action: # hit
             self.player.append(self.deal_card())
             if self.is_bust(self.player):
                 done = True
@@ -21,11 +21,9 @@ class CompleteBlackjackEnv:
             else:
                 done = False
                 reward = 0
-        else:  
+        else: # stay
             done = True
-            # hit 17 strategy
-            while self.sum_hand(self.dealer) <= 17:
-                self.dealer.append(self.deal_card())
+            self.dealer_plays()
             reward = self.winner(self.score(self.player), self.score(self.dealer))
         return self.get_playerstate(), reward, done 
     
@@ -37,6 +35,16 @@ class CompleteBlackjackEnv:
         self.dealer = [self.deal_card(), self.deal_card()]
         
         return self.get_playerstate()
+    
+    def dealer_plays(self):
+        # hit on soft 17
+        if self.sum_hand(self.dealer) == 17 and self.usable_ace(self.dealer):
+                self.dealer.append(self.deal_card())
+            
+        while self.sum_hand(self.dealer) < 17:
+            self.dealer.append(self.deal_card())
+        
+        return
     
     @staticmethod
     def winner(player, dealer):
