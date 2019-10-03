@@ -82,6 +82,9 @@ class QLearningAgent:
         if the state is a terminal state, we simply take into account the reward
         else, we default to the standard Q-learning algorithm
         
+        States are updated after completion of an episode because episodes tend to be 1,2 time-steps each
+        Additionally, after leaving a state, it is very unlikely to return to that state during one episode
+        
         Parameters
         ----------
         state : tuple
