@@ -207,12 +207,10 @@ class QLearningAgent:
         num_draws = 0
         for game in range(num_games):
             path = self.play(policy)
-            for idx, state in enumerate(path, start = 1):
-                if idx == len(path):
-                    if state[2] == 1:
-                        num_wins += 1
-                    elif state[2] == 0:
-                        num_draws += 1
+            if path[-1][2] == 1 or path[-1][2] == 2:
+                num_wins += 1
+            elif path[-1][2] == 0:
+                num_draws += 1
         print("Win Rate: {}/{} Draw Rate: {}/{}".format(num_wins, num_games, num_draws, num_games))
         print("Win Percentage: {:.2f}% Win+Draw: {:.2f}%".format(num_wins/num_games*100, (num_wins+(num_draws/2))/num_games*100))
         return 
