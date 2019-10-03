@@ -46,6 +46,7 @@ class CompleteBlackjackEnv:
         
         return
     
+    # method was taken from OpenAI Gym's blackjack environment
     @staticmethod
     def winner(player, dealer):
         return (player > dealer) - (dealer > player)
@@ -57,17 +58,21 @@ class CompleteBlackjackEnv:
     def get_playerstate(self):
         return (self.sum_hand(self.player), self.dealer[0], self.usable_ace(self.player))
     
+    # method was taken from OpenAI Gym's blackjack environment
     @staticmethod
     def usable_ace(hand):  # Does this hand have a usable ace?
         return 1 in hand and sum(hand) + 10 <= 21
     
+    # method was taken from OpenAI Gym's blackjack environment
     def sum_hand(self, hand):  # Return current hand total
         if self.usable_ace(hand):
             return sum(hand) + 10
         return sum(hand)
     
+    # method was taken from OpenAI Gym's blackjack environment
     def is_bust(self, hand):  # Is this hand a bust?
         return self.sum_hand(hand) > 21
     
+    # method was taken from OpenAI Gym's blackjack environment
     def score(self, hand):  # What is the score of this hand (0 if bust)
         return 0 if self.is_bust(hand) else self.sum_hand(hand)
