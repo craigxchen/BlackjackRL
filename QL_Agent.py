@@ -186,7 +186,7 @@ class QLearningAgent:
     
         return
     
-    def test(self, policy, num_games = 1, output_details = False):
+    def test(self, policy, num_games = 1):
         """Evaluates a certain policy
         
         Over 100,000 traisl, the exploration rate, epsilon, slowly decays over time
@@ -201,9 +201,6 @@ class QLearningAgent:
         
         num_games : int, optional
             number of games to play, default = 1
-        
-        output_details : bool, optional
-            whether or not to output details about preceedings of each game, default = False
         """
         
         num_wins = 0
@@ -211,27 +208,11 @@ class QLearningAgent:
         for game in range(num_games):
             path = self.play(policy)
             for idx, state in enumerate(path, start = 1):
-                if output_details:
-                    print("Your sum: {}, Dealer showed: {}, Usable Ace? {}".format(state[0][0], state[0][1], state[0][2]))
-                    if state[1]:
-                        print("Your action: {}".format("Hit"))
-                    else: 
-                        print("Your action: {}".format("Stay"))
-                    if idx == len(path):
-                        if state[2] == 1:
-                            num_wins += 1
-                            print("You won!")
-                        elif state[2] == -1:
-                            print("You lost.")
-                        else: 
-                            print("You drew.")
-                            num_draws += 1
-                else:
-                    if idx == len(path):
-                        if state[2] == 1:
-                            num_wins += 1
-                        elif state[2] == 0:
-                            num_draws += 1
+                if idx == len(path):
+                    if state[2] == 1:
+                        num_wins += 1
+                    elif state[2] == 0:
+                        num_draws += 1
         print("Win Rate: {}/{} Draw Rate: {}/{}".format(num_wins, num_games, num_draws, num_games))
         print("Win Percentage: {:.2f}% Win+Draw: {:.2f}%".format(num_wins/num_games*100, (num_wins+(num_draws/2))/num_games*100))
         return 
