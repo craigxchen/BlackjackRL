@@ -86,6 +86,9 @@ class QLearningAgent:
         if the state is a terminal state, we simply take into account the reward
         else, we default to the standard Q-learning algorithm
         
+        States are updated after completion of an episode because episodes tend to be 1,2 time-steps each
+        Additionally, after leaving a state, it is very unlikely to return to that state during one episode
+        
         Parameters
         ----------
         state : tuple
@@ -158,10 +161,16 @@ class QLearningAgent:
         done = False
         
         while not done:
+<<<<<<< HEAD
             # if policy is a dictionary
             if isinstance(policy, dict):
                 action = policy[state]
             else: # policy is a function
+=======
+            if isinstance(policy, dict):
+                action = policy[state]
+            else:
+>>>>>>> 70986c28860d8064b1fca5d13aa404cd31ad0b83
                 action = policy(state)
             next_state, reward, done = self.env.step(action)
             history.append([state, action, reward, done])
@@ -203,7 +212,11 @@ class QLearningAgent:
     
         return
     
+<<<<<<< HEAD
     def test(self, policy, num_games = 10):
+=======
+    def test(self, policy, num_games = 1):
+>>>>>>> 70986c28860d8064b1fca5d13aa404cd31ad0b83
         """Evaluates a certain policy
         
         Over 100,000 traisl, the exploration rate, epsilon, slowly decays over time
@@ -302,5 +315,8 @@ if __name__ == '__main__':
     Q = agent.Q
     P = dict((k,np.argmax(v)) for k, v in Q.items())
     agent.test(P, 100000)
+<<<<<<< HEAD
     plot_policy(P)
     plot_policy(P, True)
+=======
+>>>>>>> 70986c28860d8064b1fca5d13aa404cd31ad0b83
