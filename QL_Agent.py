@@ -1,4 +1,4 @@
-from blackjack_complete_TEST import CompleteBlackjackEnv
+from blackjack_complete import CompleteBlackjackEnv
 from collections import defaultdict
 from matplotlib import colors
 from matplotlib.ticker import AutoMinorLocator
