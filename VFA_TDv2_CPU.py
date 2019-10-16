@@ -82,8 +82,8 @@ def plot_policy(policy, usable_ace = False):
                 data[state[0]-12][state[1]-1] = policy[state]
     
     # create discrete colormap
-    cmap = colors.ListedColormap(['red', 'green', 'blue'])
-    bounds = [-0.5,0.5,1.5,2.5]
+    cmap = colors.ListedColormap(['red', 'green'])
+    bounds = [-0.5,0.5,1.5]
     norm = colors.BoundaryNorm(bounds, cmap.N)
     
     fig, ax = plt.subplots()
@@ -113,9 +113,9 @@ def plot_policy(policy, usable_ace = False):
     # manually define a new patch 
     patch1 = mpatches.Patch(color='green', label='Hit')
     patch2 = mpatches.Patch(color='red', label='Stand')
-    patch3 = mpatches.Patch(color='blue', label='Double Down')    
+#    patch3 = mpatches.Patch(color='blue', label='Double Down')    
     # plot the legend
-    plt.legend(handles=[patch1, patch2, patch3], loc='upper right')
+    plt.legend(handles=[patch1, patch2], loc='upper right')
     
     plt.show()
     return  
