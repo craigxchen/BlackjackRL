@@ -7,13 +7,13 @@ import random
 
 class CompleteBlackjackEnv:
     def __init__(self):
-        self.action_space = np.array([0, 1]) # hit = 1, stand = 0
+        self.action_space = [0, 1] # hit = 1, stand = 0
         self.state_space = [(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]
         
         
     def step(self, action):
         assert action in self.action_space
-        if action:  
+        if action: # hit  
             self.player.append(self.deal_card())
             if self.is_bust(self.player):
                 done = True
@@ -21,11 +21,9 @@ class CompleteBlackjackEnv:
             else:
                 done = False
                 reward = 0
-        else:  
+        else: # stay
             done = True
-            # hit 17 strategy
-            while self.sum_hand(self.dealer) <= 17:
-                self.dealer.append(self.deal_card())
+            self.dealer_plays()
             reward = self.winner(self.score(self.player), self.score(self.dealer))
         return self.get_playerstate(), reward, done 
     
@@ -38,6 +36,18 @@ class CompleteBlackjackEnv:
         
         return self.get_playerstate()
     
+    def dealer_plays(self):
+        # hit on soft 17
+        if self.sum_hand(self.dealer) == 17 and self.usable_ace(self.dealer):
+                self.dealer.append(self.deal_card())
+            
+        while self.sum_hand(self.dealer) < 17:
+            self.dealer.append(self.deal_card())
+        
+        return
+    
+    # all methods below were taken from OpenAI Gym's blackjack environment
+    # ALL credit for code below goes to OpenAI 
     @staticmethod
     def winner(player, dealer):
         return (player > dealer) - (dealer > player)

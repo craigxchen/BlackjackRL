@@ -1,5 +1,9 @@
-from blackjack_complete import CompleteBlackjackEnv
+from blackjack_complete_TEST import CompleteBlackjackEnv
 from collections import defaultdict
+from matplotlib import colors
+from matplotlib.ticker import AutoMinorLocator
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import numpy as np
 import random
 import pickle
@@ -18,8 +22,8 @@ class QLearningAgent:
     state_space : list
         A list of tuples that describe all possible states of blackjack
 
-    epsilon : float
-        Exploration rate
+    tau : float
+        Temperature for softmax 
 
     gamma : float
         Discount rate
@@ -69,7 +73,7 @@ class QLearningAgent:
         self.state_space = self.env.state_space
         self.epsilon = epsilon
         self.gamma = gamma
-        self.Q = defaultdict(lambda: np.zeros(self.env.action_space.size))
+        self.Q = defaultdict(lambda: np.zeros(len(self.env.action_space)))
         self.N = defaultdict(lambda: 0)
         
         
@@ -88,7 +92,6 @@ class QLearningAgent:
             tuple containing (player's sum, dealer's show card, if ace is usable)
         
         action : integer
-            0 = stand, 1 = hit
         
         reward : float
             reward at a state
@@ -121,14 +124,23 @@ class QLearningAgent:
         action : int
             0 or 1 (i.e. stand or hit)
         """
+#        #softmax
+#        temp = np.zeros(len(self.env.action_space))
+#        for a in self.env.action_space:
+#            sm = np.exp(self.Q[state][a]/self.tau)/np.sum(np.exp(self.Q[state]/self.tau))
+#            temp[a] = sm
+#            
+#        action = np.random.choice(self.env.action_space, p = temp)
+#        
         
+        #epsilon-greedy
         if random.uniform(0, 1) < self.epsilon:
-            action = random.choice([0, 1])
+            action = random.choice(self.env.action_space)
         else:
             action = np.argmax(self.Q[state])
         return action
     
-    def play(self):
+    def play(self, policy):
         """Goes through one full iteraction with the environment
         
         Runs through a full iteraction with the environment following a specific policy
@@ -141,12 +153,16 @@ class QLearningAgent:
         """
         
         # start
-        state = self.env.reset()
+        state, _ = self.env.reset()
         history = []
         done = False
         
         while not done:
-            action = self.policy(state)
+            # if policy is a dictionary
+            if isinstance(policy, dict):
+                action = policy[state]
+            else: # policy is a function
+                action = policy(state)
             next_state, reward, done = self.env.step(action)
             history.append([state, action, reward, done])
             state = next_state
@@ -167,13 +183,17 @@ class QLearningAgent:
         """
         
         for idx in range(num_iterations):
+#            if self.tau < 0.05:
+#                self.tau = 0.05
+#            else:
+#                self.tau *= 0.999995
             if idx < 0.3*num_iterations:
                 self.epsilon *= 0.999995
-            elif 0.3*num_iterations <= idx < 0.9*num_iterations:
+            elif 0.3*num_iterations <= idx < 0.8*num_iterations:
                 self.epsilon *= 0.99995
             else: 
                 self.epsilon = 0
-            episode = self.play()
+            episode = self.play(self.policy)
             states, actions, rewards, done = zip(*episode)
             for k in range(len(states)):
                 if k == len(states) - 1: # if states[k] is the terminal state
@@ -183,7 +203,7 @@ class QLearningAgent:
     
         return
     
-    def test(self, policy, num_games = 1, output_details = False):
+    def test(self, policy, num_games = 10):
         """Evaluates a certain policy
         
         Over 100,000 traisl, the exploration rate, epsilon, slowly decays over time
@@ -198,57 +218,89 @@ class QLearningAgent:
         
         num_games : int, optional
             number of games to play, default = 1
-        
-        output_details : bool, optional
-            whether or not to output details about preceedings of each game, default = False
         """
         
         num_wins = 0
         num_draws = 0
         for game in range(num_games):
-            path = self.play()
-            for idx, state in enumerate(path, start = 1):
-                if output_details:
-                    print("Your sum: {}, Dealer showed: {}, Usable Ace? {}".format(state[0][0], state[0][1], state[0][2]))
-                    if state[1]:
-                        print("Your action: {}".format("Hit"))
-                    else: 
-                        print("Your action: {}".format("Stay"))
-                    if idx == len(path):
-                        if state[2] == 1:
-                            num_wins += 1
-                            print("You won!")
-                        elif state[2] == -1:
-                            print("You lost.")
-                        else: 
-                            print("You drew.")
-                            num_draws += 1
-                else:
-                    if idx == len(path):
-                        if state[2] == 1:
-                            num_wins += 1
-                        elif state[2] == 0:
-                            num_draws += 1
+            path = self.play(policy)
+            if path[-1][2] == 1 or path[-1][2] == 2:
+                num_wins += 1
+            elif path[-1][2] == 0:
+                num_draws += 1
         print("Win Rate: {}/{} Draw Rate: {}/{}".format(num_wins, num_games, num_draws, num_games))
         print("Win Percentage: {:.2f}% Win+Draw: {:.2f}%".format(num_wins/num_games*100, (num_wins+(num_draws/2))/num_games*100))
         return 
     
-#    def savePolicy(self, filename="blackjack_policy"):
-#        with open(filename, 'wb+') as f:
-#            pickle.dump(self.player_Q_Values, f)
-#
-#    def loadPolicy(self, filename="blackjack_policy"):
-#        with open(filename, 'rb') as f:
-#            self.player_Q_Values = pickle.load(f)
+    def save_policy(self, filename="blackjack_policy"):
+        with open(filename, 'wb+') as f:
+            pickle.dump(self.player_Q_Values, f)
+
+    def load_policy(self, filename="blackjack_policy"):
+        with open(filename, 'rb') as f:
+            self.player_Q_Values = pickle.load(f)
     
 # %%
             
+def plot_policy(policy, usable_ace = False):
+    if not usable_ace:
+        data = np.empty((18, 10))
+        for state in policy.keys():
+            if state[2] == usable_ace: 
+                data[state[0]-4][state[1]-1] = policy[state]
+    else:
+        data = np.empty((10, 10))
+        for state in policy.keys():
+            if state[2] == usable_ace:
+                data[state[0]-12][state[1]-1] = policy[state]
+    
+    # create discrete colormap
+    cmap = colors.ListedColormap(['red', 'green', 'blue'])
+    bounds = [-0.5,0.5,1.5,2.5]
+    norm = colors.BoundaryNorm(bounds, cmap.N)
+    
+    fig, ax = plt.subplots()
+    ax.imshow(data, cmap=cmap, norm=norm)
+    
+    ax.set_xticks(np.arange(10))
+    if not usable_ace:
+        ax.set_yticks(np.arange(18))
+        ax.set_yticklabels(['4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21'])
+    else:
+        ax.set_yticks(np.arange(10))
+        ax.set_yticklabels(['A + 1', 'A + 2', 'A + 3', 'A + 4', 'A + 5', 'A + 6', 'A + 7', 'A + 8', 'A + 9', 'A + 10'])
+        
+    ax.set_xticklabels(['A', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
+    
+    ax.set_xlabel('Dealer Show Card')
+    if not usable_ace:
+        ax.set_ylabel('Player Sum (Hard)')
+    else:
+        ax.set_ylabel('Player Sum (Soft)')
+    
+    minor_locator = AutoMinorLocator(2)
+    ax.xaxis.set_minor_locator(minor_locator)
+    ax.yaxis.set_minor_locator(minor_locator)
+    ax.invert_yaxis()
+    ax.grid(which='minor', axis='both', linestyle='-', color='k', linewidth=0.4)
+    # manually define a new patch 
+    patch1 = mpatches.Patch(color='green', label='Hit')
+    patch2 = mpatches.Patch(color='red', label='Stand')
+    patch3 = mpatches.Patch(color='blue', label='Double Down')    
+    # plot the legend
+    plt.legend(handles=[patch1, patch2, patch3], loc='upper right')
+    
+    plt.show()
+    return            
+
 if __name__ == '__main__':
     env = CompleteBlackjackEnv()
     agent = QLearningAgent(env)
     
-    agent.train()
+    agent.train(1000000)
     
     Q = agent.Q
     P = dict((k,np.argmax(v)) for k, v in Q.items())
     agent.test(P, 100000)
+    plot_policy(P)
+    plot_policy(P, True)
