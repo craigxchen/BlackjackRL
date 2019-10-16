@@ -14,7 +14,7 @@ import torch.nn.functional as F
 # H is hidden dimension; D_out is output dimension
 N, D_in, D_H, D_out = 1, 3, 512, 1
 
-num_trials = 50000
+num_trials = 500000
 alpha = 1 # scaling parameter
 #lr = 1e-3 # learning rate
 gamma = 1.0 # discount rate
@@ -37,8 +37,6 @@ class OneHiddenLayer(nn.Module):
         # no doubling for the bias as it is a 1x1 matrix
 
     def forward(self, a0):
-#        if a0[0] > 21:
-#            return torch.tensor([0.0])
         return self.layer2(F.relu(self.layer1(a0)))
     
 def preprocess(state):
@@ -52,7 +50,14 @@ def policy(state):
         action = random.choice(env.action_space)
     else:
         next_states = [torch.tensor([float(hands), float(state[1]), float(state[2])]) for hands in env.future_hands()]
-        EV_hit = np.mean([VFA(s).cpu().detach().numpy() for s in next_states])
+        next_values = []
+        for s in next_states:
+            if s[0] > 21:
+                next_values.append(0.0)
+            else: 
+                next_values.append(VFA(s).cpu().detach().numpy())
+        
+        EV_hit = np.mean(next_values)
         EV_stay = float(VFA(state).cpu().detach().numpy())
         action = EV_hit > EV_stay
     return action
