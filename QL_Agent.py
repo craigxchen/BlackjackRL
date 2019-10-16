@@ -156,7 +156,7 @@ class QLearningAgent:
         """
         
         # start
-        state, _ = self.env.reset()
+        state = self.env.reset()
         history = []
         done = False
         
