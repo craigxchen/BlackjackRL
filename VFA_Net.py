@@ -22,24 +22,22 @@ class NeuralNetwork:
 #            self.parameters['b_' + str(idx)] = np.tile(np.random.randn(layer_output_size, 1) * 0.1
 #                                , (self.batch_size, 1, 1))
 #            temp = np.random.randn(layer_output_size, layer_input_size) * np.sqrt(2/layer_input_size)
-            
+#            
             temp_w = (np.random.random(size=layer_output_size*layer_input_size)*np.sqrt(1/layer_input_size)).tolist()
             dbl_w = [k*(-1**i) for k,i in zip(temp_w,range(len(temp_w)))]
             
             self.parameters['w_' + str(idx)] = np.array(dbl_w).reshape(layer_output_size, layer_input_size)
             
-            self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1)
+#            self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size) * np.sqrt(2/layer_input_size)
+            self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1) * 0.1
             
     def __call__(self, a0):
-#        if a0[0] > 21:
-#            return 0
         a_prev = a0
         for idx, layer in enumerate(self.nn_structure):
             w_n = self.parameters['w_' + str(idx)]
             b_n = self.parameters['b_' + str(idx)]
             
             a_n, z_n = self.layer_activation(a_prev, w_n, b_n, layer['activation'])
-#            print(z_n.shape)
             a_prev = a_n
             
         return a_n
@@ -60,8 +58,6 @@ class NeuralNetwork:
             raise Exception('activation function currently not supported')
     
     def net_forward(self, a0):
-#        if a0[0] > 21:
-#            return -1
         self.input_batch = a0
         a_prev = a0
         for idx, layer in enumerate(self.nn_structure):
@@ -94,7 +90,7 @@ class NeuralNetwork:
         return dA_prev, dW, dB 
     
     def net_backward(self, predictions, targets):
-        dA = -2*(targets - predictions) # derivative of cost w.r.t. final activation (MSE LOSS)
+        dA = -1*(targets - predictions) # derivative of cost w.r.t. final activation (MSE LOSS)
         for idx, layer in reversed(list(enumerate(self.nn_structure))):
             if idx == 0:
                 a_prev = self.input_batch
@@ -115,46 +111,9 @@ class NeuralNetwork:
     
     def update_wb(self, step_size):
         for idx, layer in enumerate(self.nn_structure):
-            self.parameters['w_' + str(idx)] -= step_size/2 * self.grad_values['dW_' + str(idx)]
-            self.parameters['b_' + str(idx)] -= step_size/2 * self.grad_values['dB_' + str(idx)]
+            self.parameters['w_' + str(idx)] -= step_size * self.grad_values['dW_' + str(idx)]
+            self.parameters['b_' + str(idx)] -= step_size * self.grad_values['dB_' + str(idx)]
         return
-    
-    # TODO update accuracy function
-    def learn(self, input_batch, targets, step_size = 0.001):
-        cost_hist = []
-#        acc_hist = []
-        predictions, cost = self.net_forward(input_batch)
-#        accuracy = self.accuracy(predictions)
-        cost_hist.append(cost)
-#        acc_hist.append(accuracy)
-        self.net_backward(predictions, targets)
-        self.update_wb(step_size)
-#        print('average accuracy: {:.4f}%'.format(np.mean(acc_hist))) 
-        print('average cost: {:.4f}'.format(np.mean(cost_hist)))
-        return
-    
-    # TODO FIX
-    def predict(self, image, label):
-        a_prev = image
-        for idx, layer in enumerate(self.nn_structure):
-            w_n = self.parameters['w_' + str(idx)]
-            b_n = self.parameters['b_' + str(idx)]
-            
-            a_n, z_n = self.activation_forward(a_prev, w_n, b_n, layer['activation'])
-            a_prev = a_n
-        prediction = np.argmax(a_n[0])
-        true_val = np.argmax(label)
-        print('prediction: {} certainty: {}'.format(prediction, a_n[0][prediction]))
-        print('actual value: {}'.format(true_val))
-        return 
-    
-    # TODO FIX
-    def accuracy(self, batch_idx, predictions):
-        temp = []
-        for k in range(self.batch_size):
-            x = np.argmax(self.lbl_batches[batch_idx - 1][k]) == np.argmax(predictions[k])
-            temp.append(x)
-        return (np.sum(temp)/self.batch_size) * 100
     
     def save_model(self, name):
         np.save(name, self.parameters)
