@@ -1,13 +1,12 @@
 import numpy as np
 
 class NeuralNetwork:
-    def __init__(self, nn_structure, batch_size = 16):
+    def __init__(self, nn_structure):
         self.nn_structure = nn_structure
         self.num_layers = len(nn_structure)
         
         self.parameters = {}
-        self.batch_size = batch_size
-
+        
         # intializes dictionaries needed to store values for backpropagation
         self.memory = {}
         self.grad_values = {}
@@ -23,12 +22,12 @@ class NeuralNetwork:
 #                                , (self.batch_size, 1, 1))
 #            temp = np.random.randn(layer_output_size, layer_input_size) * np.sqrt(2/layer_input_size)
 #            
-            temp_w = (np.random.random(size=layer_output_size*layer_input_size)*np.sqrt(1/layer_input_size)).tolist()
-            dbl_w = [k*(-1**i) for k,i in zip(temp_w,range(len(temp_w)))]
+#            temp_w = (np.random.random(size=layer_output_size*layer_input_size)*np.sqrt(1/layer_input_size)).tolist()
+#            dbl_w = [k*(-1**i) for k,i in zip(temp_w,range(len(temp_w)))]
+#            
+#            self.parameters['w_' + str(idx)] = np.array(dbl_w).reshape(layer_output_size, layer_input_size)
             
-            self.parameters['w_' + str(idx)] = np.array(dbl_w).reshape(layer_output_size, layer_input_size)
-            
-#            self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size) * np.sqrt(2/layer_input_size)
+            self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size) * np.sqrt(1/layer_input_size)
             self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1) * 0.1
             
     def __call__(self, a0):
@@ -125,6 +124,18 @@ class NeuralNetwork:
             self.parameters['w_' + str(idx)] = npfile['w_' + str(idx)]         
         for idx, layer in enumerate(self.nn_structure):
             self.parameters['b_' + str(idx)] = npfile['b_' + str(idx)]
+        return
+    
+    def reset_params(self):
+        self.parameters = {}
+        self.memory = {}
+        self.grad_values = {}
+        for idx, layer in enumerate(self.nn_structure):
+            layer_input_size = layer["input_dim"]
+            layer_output_size = layer["output_dim"] 
+            
+            self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size) * np.sqrt(1/layer_input_size)
+            self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1) * 0.1
         return
     
     # activation functions
