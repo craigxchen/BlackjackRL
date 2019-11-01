@@ -14,11 +14,10 @@ nn_arq = [ #consider turning 3-vector into 1x1 value
     {"input_dim": 512, "output_dim": 1, "activation": "tanh"},
 ]
 
-BATCH_SIZE = 1
-ALPHA = 500
+ALPHA = 1000
 GAMMA = 1
 EPSILON = 1
-NUM_TRIALS = 10000
+NUM_TRIALS = 100000
 
 model = NeuralNetwork(nn_arq)
 env = CompleteBlackjackEnv()
@@ -104,10 +103,10 @@ def plot_policy(policy, usable_ace = False, save = True):
     
     if save:
         if usable_ace:
-            plt.savefig("VFA_policy_soft({}trials,{}perbatch,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,BATCH_SIZE,ALPHA,0.005,nn_arq[0]["output_dim"])
+            plt.savefig("VFA_policy_soft({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"])
                 , bbox_inches = 'tight')
         else:
-            plt.savefig("VFA_policy_hard({}trials,{}perbatch,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,BATCH_SIZE,ALPHA,0.005,nn_arq[0]["output_dim"])
+            plt.savefig("VFA_policy_hard({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"])
             , bbox_inches = 'tight')
     return
 
@@ -139,7 +138,8 @@ def train(**kwargs):
             
             y_hat = ALPHA*model.net_forward(process(state))
             
-            lr = min(1/(ALPHA*(1+N[state])**0.85), 0.001)
+#            lr = min(1/(ALPHA*(1+N[state])**0.85), 0.001)
+            lr = 0.001/ALPHA
             
             model.net_backward(y_hat, y)
             model.update_wb(lr, 0.1)
