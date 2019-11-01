@@ -9,21 +9,18 @@ import random
 import pickle
 import numpy as np
 
-nn_arq = [
-    {"input_dim": 3, "output_dim": 256, "activation": "relu"},
-    {"input_dim": 256, "output_dim": 1, "activation": "tanh"},
+nn_arq = [ #consider turning 3-vector into 1x1 value
+    {"input_dim": 3, "output_dim": 512, "activation": "relu"},
+    {"input_dim": 512, "output_dim": 1, "activation": "tanh"},
 ]
 
-def MSE_Loss(x, y):
-    return 0.5*(x-y)**2
-
-BATCH_SIZE = 64
-ALPHA = 35
+BATCH_SIZE = 1
+ALPHA = 500
 GAMMA = 1
 EPSILON = 1
 NUM_TRIALS = 10000
 
-model = NeuralNetwork(nn_arq)
+model = NeuralNetwork(nn_arq, double="yes")
 env = CompleteBlackjackEnv()
 
 N = defaultdict(lambda: 0) # N table
@@ -68,7 +65,7 @@ def plot_policy(policy, usable_ace = False, save = True):
             if state[2] == usable_ace:
                 data[state[0]-12][state[1]-1] = policy[state]
     
-    # create discrete colormap
+    # create discrete colormaps
     cmap = colors.ListedColormap(['red', 'green'])
     bounds = [-0.5,0.5,1.5]
     norm = colors.BoundaryNorm(bounds, cmap.N)
@@ -107,10 +104,10 @@ def plot_policy(policy, usable_ace = False, save = True):
     
     if save:
         if usable_ace:
-            plt.savefig("VFA_policy_soft({}trials,{}perbatch,{}alpha,{}learningrate,{}neurons).png".format(num_trials,batch_size,alpha,0.005,nn_arq[0]["output_dim"])
+            plt.savefig("VFA_policy_soft({}trials,{}perbatch,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,BATCH_SIZE,ALPHA,0.005,nn_arq[0]["output_dim"])
                 , bbox_inches = 'tight')
         else:
-            plt.savefig("VFA_policy_hard({}trials,{}perbatch,{}alpha,{}learningrate,{}neurons).png".format(num_trials,batch_size,alpha,0.005,nn_arq[0]["output_dim"])
+            plt.savefig("VFA_policy_hard({}trials,{}perbatch,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,BATCH_SIZE,ALPHA,0.005,nn_arq[0]["output_dim"])
             , bbox_inches = 'tight')
     return
 
@@ -125,10 +122,12 @@ def find_params(alpha_range, batch_range, trial_range):
     for a in range(alpha_range[0], alpha_range[1]+1, 5):
         for b in range(batch_range[0], batch_range[1]+1, 4):
             for n in range(trial_range[0], trial_range[1]+1, 1000):
-                model.reset_params()
-                p, _ = train(model=model, NUM_TRIALS=n, BATCH_SIZE=b, ALPHA=a)
-                table[(n, b, a)] = [difference(p)]
-                print('{},{},{}: difference of {}'.format(n,b,a,table[(n,b,a)]))
+                for r in range(5):
+                    model.reset_params()
+                    p, _ = train(model=model, NUM_TRIALS=n, BATCH_SIZE=b, ALPHA=a)
+                    table[(n, b, a)].append(difference(p))
+                
+                print('{},{},{}: avg difference of {}'.format(n,b,a,np.mean(table[(n,b,a)])))
     return table
 
 # %% training
@@ -136,9 +135,9 @@ with open("near_optimal", 'rb') as f:
     P_star = pickle.load(f)    
 def train(**kwargs):
     for i in range(NUM_TRIALS):
-        if (i+1)%(NUM_TRIALS/10) == 0:
-            print('trial {}/{}'.format(i+1,NUM_TRIALS))
-            
+#        if (i+1)%(NUM_TRIALS/10) == 0:
+#            print('trial {}/{}'.format(i+1,NUM_TRIALS))
+#            
 #        epsilon = max(epsilon*0.999995, 0.001)
             
         state, _ = env.reset()
@@ -146,7 +145,7 @@ def train(**kwargs):
         
         # TO DO: fix batch sampling issue
         while not done:
-            #N[state]+=1
+            N[state]+=1
             curr_hand = env.player.copy()
             action = P_star[state]
             
@@ -157,30 +156,37 @@ def train(**kwargs):
                 if state == next_state:
                     y = reward
                 else:
-                    y = reward + GAMMA*ALPHA*model(process(next_state))
+                    y = reward + GAMMA*model(process(next_state))
                 batch.append(y)
             
             y = np.mean(batch)
             
             y_hat = ALPHA*model.net_forward(process(state))
             
-            #lr = min(1/(alpha*(1+N[state])**0.85), 0.01)
-            lr = 0.005
+            lr = min(1/(ALPHA*(1+N[state])**0.85), 0.001)
             
             model.net_backward(y_hat, y)
-            model.update_wb(lr)
+            model.update_wb(lr, 0.1)
             
             state = next_state          
     
     P_derived = get_policy()
     V = dict((k,model(process(k))) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
-    plot_policy(P_derived, save=True)
-    plot_policy(P_derived, True, save=True)
+#    plot_policy(P_derived, save=True)
+#    plot_policy(P_derived, True, save=True)
     return P_derived, V
 
-#param_table = find_params([30, 50], [36, 64], [1000, 10000])
+#with open("param_table", 'rb') as f:
+#    param_table = pickle.load(f)
+#param_table = defaultdict(lambda: [])
+#
+#find_params([5, 25], [64, 64], [1000, 5000])
 model.reset_params()
 P_derived, V = train()
 
-#with open("param_table", 'wb+') as f:
+#with open("param_table_updated", 'wb+') as f:
 #    pickle.dump(param_table, f)  
+
+
+# weights moves order(1/alpha)
+# function moves order(1)
