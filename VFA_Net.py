@@ -1,7 +1,7 @@
 import numpy as np
 
 class NeuralNetwork:
-    def __init__(self, nn_structure):
+    def __init__(self, nn_structure, double="no"):
         self.nn_structure = nn_structure
         self.num_layers = len(nn_structure)
         
@@ -20,15 +20,15 @@ class NeuralNetwork:
 #                                , (self.batch_size, 1, 1)) * np.sqrt(2/layer_input_size)                                            
 #            self.parameters['b_' + str(idx)] = np.tile(np.random.randn(layer_output_size, 1) * 0.1
 #                                , (self.batch_size, 1, 1))
-#            temp = np.random.randn(layer_output_size, layer_input_size) * np.sqrt(2/layer_input_size)
-#            
-#            temp_w = (np.random.random(size=layer_output_size*layer_input_size)*np.sqrt(1/layer_input_size)).tolist()
-#            dbl_w = [k*(-1**i) for k,i in zip(temp_w,range(len(temp_w)))]
-#            
-#            self.parameters['w_' + str(idx)] = np.array(dbl_w).reshape(layer_output_size, layer_input_size)
-            
-            self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size) * np.sqrt(1/layer_input_size)
-            self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1) * 0.1
+            if double == "yes":
+                temp_w = (np.random.random(size=layer_output_size*layer_input_size)*np.sqrt(1/layer_input_size)).tolist()
+                dbl_w = [k*(-1**i) for k,i in zip(temp_w,range(len(temp_w)))]
+                
+                self.parameters['w_' + str(idx)] = np.array(dbl_w).reshape(layer_output_size, layer_input_size)
+                self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1)
+            else:
+                self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size)
+                self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1)
             
     def __call__(self, a0):
         a_prev = a0
@@ -89,7 +89,8 @@ class NeuralNetwork:
         return dA_prev, dW, dB 
     
     def net_backward(self, predictions, targets):
-        dA = -1*(targets - predictions) # derivative of cost w.r.t. final activation (MSE LOSS)
+        # derivative of cost w.r.t. final activation (Regularaized MSE loss)
+        dA = -1*(targets - predictions)
         for idx, layer in reversed(list(enumerate(self.nn_structure))):
             if idx == 0:
                 a_prev = self.input_batch
@@ -108,10 +109,12 @@ class NeuralNetwork:
             
         return
     
-    def update_wb(self, step_size):
+    def update_wb(self, step_size, lmbda):
         for idx, layer in enumerate(self.nn_structure):
-            self.parameters['w_' + str(idx)] -= step_size * self.grad_values['dW_' + str(idx)]
-            self.parameters['b_' + str(idx)] -= step_size * self.grad_values['dB_' + str(idx)]
+            self.parameters['w_' + str(idx)] -= step_size*self.grad_values['dW_' + str(idx)] 
+#                + step_size*lmbda*np.linalg.norm(self.parameters['w_' + str(idx)], 'fro')
+            self.parameters['b_' + str(idx)] -= step_size*self.grad_values['dB_' + str(idx)]
+#                + step_size*lmbda*np.linalg.norm(self.parameters['b_' + str(idx)], 'fro')
         return
     
     def save_model(self, name):
