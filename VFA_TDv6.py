@@ -16,8 +16,8 @@ nn_arq = [ #consider turning 3-vector into 1x1 value
 
 ALPHA = 1000
 GAMMA = 1
-EPSILON = 1
-NUM_TRIALS = 100000
+EPSILON = 0
+NUM_TRIALS = 200000
 
 model = NeuralNetwork(nn_arq)
 env = CompleteBlackjackEnv()
@@ -136,12 +136,12 @@ def train(**kwargs):
             else:
                 y = reward
             
-            y_hat = ALPHA*model.net_forward(process(state))
+            y_hat = model.net_forward(process(state))
             
 #            lr = min(1/(ALPHA*(1+N[state])**0.85), 0.001)
             lr = 0.001/ALPHA
             
-            model.net_backward(y_hat, y)
+            model.net_backward(y_hat, ALPHA*y)
             model.update_wb(lr, 0.1)
             
             state = next_state          
