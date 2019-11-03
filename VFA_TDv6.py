@@ -3,9 +3,9 @@ from blackjack_complete_TEST import CompleteBlackjackEnv
 from collections import defaultdict
 from matplotlib import colors
 from matplotlib.ticker import AutoMinorLocator
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import random
 import pickle
 import numpy as np
 
@@ -14,10 +14,10 @@ nn_arq = [ #consider turning 3-vector into 1x1 value or 1-hot encoding
     {"input_dim": 512, "output_dim": 1, "activation": "none"},
 ]
 
-ALPHA = 2000
+ALPHA = 1000
 GAMMA = 1
 EPSILON = 0
-NUM_TRIALS = 5000000
+NUM_TRIALS = 50000
 
 
 def loss(target, prediction, alpha=1):
@@ -32,29 +32,54 @@ N = defaultdict(lambda: 0) # N table
 def process(state):
     return np.array([state[0]/10.5, state[1]/5.0, state[2]]).reshape((3,1))
 
-def get_policy():
+def get_policy(V):
     P = {}
-    for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] 
-        + [(x, y, False) for x in range(4,22) for y in range(1, 11)]):
-        P[k] = policy(k, 0)
+    for state in V.keys():
+        EV_Hit = []
+        EV_Stay = model(process(state))
+        
+        fut_states, _ = env.future_states(state)
+        for fs in fut_states:
+            EV_Hit.append(model(process(state)))
+
+        P[state] = (np.mean(EV_Hit) > EV_Stay).astype(int)
     return P
 
-def policy(state, epsilon=EPSILON):
-    if random.uniform(0,1) < epsilon:
-        return env.action_space.sample()
-    else:
-        next_sums = [k + state[0] for k in list(range(1,11)) + 3*[10]]
-        for k in range(len(next_sums)):
-            if state[2] and next_sums[k] > 21:
-                next_sums[k] -= 10
-
-        next_states = [(x, state[1], state[2]) for x in next_sums]
-        next_values = [model(process(s)) for s in next_states]
+def plot_value(V, usable_ace = False):
+        fig = plt.figure()
+        fig.clf()
+        ax = Axes3D(fig)
         
-        EV_hit = np.mean(next_values)
-        EV_stay = model(process(state))
-        action = EV_hit > EV_stay
-    return action[0][0]
+        states = list(V.keys())
+        states_YESace = {}
+        states_NOTace = {}
+        for state in states:
+            if not state[2]:
+                states_NOTace[state] = V[state]
+            else: 
+                states_YESace[state] = V[state]
+        
+        if usable_ace == 1:
+            player_sum = [state[0] for state in states_YESace.keys()]
+            dealer_show = [state[1] for state in states_YESace.keys()]
+            scores = [val for val in states_YESace.values()]
+
+            ax.plot_trisurf(player_sum, dealer_show, scores, cmap="viridis", edgecolor="none")
+            ax.set_xlabel("Player's Sum")
+            ax.set_ylabel("Dealer's Show Card")
+            ax.set_zlabel("Perceived Value")
+            ax.view_init(elev=40, azim=-100)
+        else:
+            player_sum = np.array([state[0] for state in states_NOTace.keys()])
+            dealer_show = np.array([state[1] for state in states_NOTace.keys()])
+            scores = np.array([val for val in states_NOTace.values()])
+
+            ax.plot_trisurf(player_sum, dealer_show, scores, cmap="viridis", edgecolor="none")
+            ax.set_xlabel("Player's Sum")
+            ax.set_ylabel("Dealer's Show Card")
+            ax.set_zlabel("Perceived Value")
+            ax.view_init(elev=40, azim=-100)
+        return
 
 def plot_policy(policy, usable_ace = False, save = True):
     if not usable_ace:
@@ -142,6 +167,7 @@ def train(**kwargs):
         done = False
         
         while not done:
+            game_loss = []
             N[state]+=1
             action = P_star[state]
             next_state, reward, done = env.step(action)
@@ -161,14 +187,16 @@ def train(**kwargs):
 #            lr = min(1/(ALPHA*(1+N[state])**0.85), 0.001)
             lr = 0.001/ALPHA
             
-            loss_history.append(loss(y, y_hat, ALPHA))
+            game_loss.append(loss(y, y_hat, ALPHA))
             model.net_backward(y, y_hat, ALPHA)
             model.update_wb(lr)
             
-            state = next_state          
+            state = next_state   
+        loss_history.append(np.mean(game_loss))
     
-    P_derived = get_policy()
-    V = dict((k,model(process(k))) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
+    V = dict((k,model(process(k))[0][0]) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
+    P_derived = get_policy(V)
+    
     plot_policy(P_derived, save=False)
     plot_policy(P_derived, True, save=False)
     return P_derived, V, loss_history
