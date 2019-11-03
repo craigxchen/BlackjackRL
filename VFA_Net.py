@@ -11,6 +11,7 @@ class NeuralNetwork:
         self.memory = {}
         self.grad_values = {}
         
+        np.random.seed(1)
         for idx, layer in enumerate(self.nn_structure):
             layer_input_size = layer["input_dim"]
             layer_output_size = layer["output_dim"] 
