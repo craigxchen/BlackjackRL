@@ -11,13 +11,14 @@ import numpy as np
 
 nn_arq = [ #consider turning 3-vector into 1x1 value or 1-hot encoding
     {"input_dim": 3, "output_dim": 512, "activation": "relu"},
-    {"input_dim": 512, "output_dim": 1, "activation": "tanh"},
+    {"input_dim": 512, "output_dim": 1, "activation": "none"},
 ]
 
 ALPHA = 2000
 GAMMA = 1
 EPSILON = 0
-NUM_TRIALS = 2000000
+NUM_TRIALS = 5000000
+
 
 def loss(target, prediction, alpha=1):
     return float((1/alpha**2)*(target-alpha*prediction)**2)
@@ -104,13 +105,12 @@ def plot_policy(policy, usable_ace = False, save = True):
     
     plt.show()
     
+    # TODO Fix
     if save:
         if usable_ace:
-            plt.savefig("VFA_policy_soft({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"])
-                , bbox_inches = 'tight')
+            fig.savefig("VFA_policy_soft({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"]), bbox_inches = 'tight')
         else:
-            plt.savefig("VFA_policy_hard({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"])
-            , bbox_inches = 'tight')
+            fig.savefig("VFA_policy_hard({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"]), bbox_inches = 'tight')
     return
 
 def plot_loss(y):
@@ -118,7 +118,7 @@ def plot_loss(y):
     label_fontsize = 18
 
     t = np.arange(0,len(y))
-    ax.plot(t,y)
+    ax.plot(t[::100],y[::100])
         
     ax.set_xlabel('Trials',fontsize=label_fontsize)
     ax.set_ylabel('Loss',fontsize=label_fontsize)
@@ -130,10 +130,10 @@ def plot_loss(y):
 # %% training
 with open("near_optimal", 'rb') as f:
     P_star = pickle.load(f)    
-    
-loss_history = []
+
 
 def train(**kwargs):
+    loss_history = []
     for i in range(NUM_TRIALS):
         if (i+1)%(NUM_TRIALS/10) == 0:
             print('trial {}/{}'.format(i+1,NUM_TRIALS))
@@ -171,8 +171,8 @@ def train(**kwargs):
     V = dict((k,model(process(k))) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
     plot_policy(P_derived, save=False)
     plot_policy(P_derived, True, save=False)
-    return P_derived, V
+    return P_derived, V, loss_history
 
 #model.reset_params()
-P_derived, V = train()
+P_derived, V, loss_history = train()
 plot_loss(loss_history)
