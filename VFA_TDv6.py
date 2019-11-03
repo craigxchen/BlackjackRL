@@ -9,15 +9,18 @@ import random
 import pickle
 import numpy as np
 
-nn_arq = [ #consider turning 3-vector into 1x1 value
+nn_arq = [ #consider turning 3-vector into 1x1 value or 1-hot encoding
     {"input_dim": 3, "output_dim": 512, "activation": "relu"},
     {"input_dim": 512, "output_dim": 1, "activation": "tanh"},
 ]
 
-ALPHA = 1000
+ALPHA = 2000
 GAMMA = 1
 EPSILON = 0
-NUM_TRIALS = 200000
+NUM_TRIALS = 2000000
+
+def loss(target, prediction, alpha=1):
+    return float((1/alpha**2)*(target-alpha*prediction)**2)
 
 model = NeuralNetwork(nn_arq)
 env = CompleteBlackjackEnv()
@@ -110,9 +113,26 @@ def plot_policy(policy, usable_ace = False, save = True):
             , bbox_inches = 'tight')
     return
 
+def plot_loss(y):
+    fig, ax = plt.subplots()
+    label_fontsize = 18
+
+    t = np.arange(0,len(y))
+    ax.plot(t,y)
+        
+    ax.set_xlabel('Trials',fontsize=label_fontsize)
+    ax.set_ylabel('Loss',fontsize=label_fontsize)
+
+    plt.grid(True)
+    plt.show()
+    return
+
 # %% training
 with open("near_optimal", 'rb') as f:
     P_star = pickle.load(f)    
+    
+loss_history = []
+
 def train(**kwargs):
     for i in range(NUM_TRIALS):
         if (i+1)%(NUM_TRIALS/10) == 0:
@@ -141,8 +161,9 @@ def train(**kwargs):
 #            lr = min(1/(ALPHA*(1+N[state])**0.85), 0.001)
             lr = 0.001/ALPHA
             
-            model.net_backward(y_hat, ALPHA*y)
-            model.update_wb(lr, 0.1)
+            loss_history.append(loss(y, y_hat, ALPHA))
+            model.net_backward(y, y_hat, ALPHA)
+            model.update_wb(lr)
             
             state = next_state          
     
@@ -152,9 +173,6 @@ def train(**kwargs):
     plot_policy(P_derived, True, save=False)
     return P_derived, V
 
-model.reset_params()
+#model.reset_params()
 P_derived, V = train()
-
-
-# weights moves order(1/alpha)
-# function moves order(1)
+plot_loss(loss_history)
