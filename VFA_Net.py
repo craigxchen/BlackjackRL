@@ -1,7 +1,7 @@
 import numpy as np
 
 class NeuralNetwork:
-    def __init__(self, nn_structure, double="no"):
+    def __init__(self, nn_structure, double="no", loss=None):
         self.nn_structure = nn_structure
         self.num_layers = len(nn_structure)
         
@@ -24,8 +24,11 @@ class NeuralNetwork:
                 temp_w = (np.random.random(size=layer_output_size*layer_input_size)*np.sqrt(1/layer_input_size)).tolist()
                 dbl_w = [k*(-1**i) for k,i in zip(temp_w,range(len(temp_w)))]
                 
+                temp_b = (np.random.random(size=layer_output_size)*np.sqrt(1/layer_input_size)).tolist()
+                dbl_b = [k*(-1**i) for k,i in zip(temp_b,range(len(temp_b)))]
+                
                 self.parameters['w_' + str(idx)] = np.array(dbl_w).reshape(layer_output_size, layer_input_size)
-                self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1)
+                self.parameters['b_' + str(idx)] = np.array(dbl_b).reshape(layer_output_size, 1)
             else:
                 self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size)
                 self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1)
@@ -88,9 +91,9 @@ class NeuralNetwork:
         
         return dA_prev, dW, dB 
     
-    def net_backward(self, predictions, targets):
-        # derivative of cost w.r.t. final activation (Regularaized MSE loss)
-        dA = -1*(targets - predictions)
+    def net_backward(self, targets, predictions, alpha=1):
+        # derivative of cost w.r.t. final activation (1/alpha^2 MSE)
+        dA = -(1/alpha)*(targets - alpha*predictions)
         for idx, layer in reversed(list(enumerate(self.nn_structure))):
             if idx == 0:
                 a_prev = self.input_batch
@@ -109,12 +112,10 @@ class NeuralNetwork:
             
         return
     
-    def update_wb(self, step_size, lmbda):
+    def update_wb(self, step_size):
         for idx, layer in enumerate(self.nn_structure):
             self.parameters['w_' + str(idx)] -= step_size*self.grad_values['dW_' + str(idx)] 
-#                + step_size*lmbda*np.linalg.norm(self.parameters['w_' + str(idx)], 'fro')
             self.parameters['b_' + str(idx)] -= step_size*self.grad_values['dB_' + str(idx)]
-#                + step_size*lmbda*np.linalg.norm(self.parameters['b_' + str(idx)], 'fro')
         return
     
     def save_model(self, name):
