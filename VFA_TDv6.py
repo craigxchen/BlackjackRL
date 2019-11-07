@@ -17,7 +17,7 @@ nn_arq = [ #consider turning 3-vector into 1x1 value or 1-hot encoding
 ALPHA = 1000
 GAMMA = 1
 EPSILON = 0
-NUM_TRIALS = 50000
+NUM_TRIALS = 100000
 
 
 def loss(target, prediction, alpha=1):
@@ -30,7 +30,7 @@ N = defaultdict(lambda: 0) # N table
 # %% 
 
 def process(state):
-    return np.array([state[0]/10.5, state[1]/5.0, state[2]]).reshape((3,1))
+    return np.array([state[0]/(max(env.state_space)[0]/2), state[1]/(max(env.state_space)[1]/2), state[2]]).reshape((3,1))
 
 def get_policy(V):
     P = {}
@@ -45,9 +45,8 @@ def get_policy(V):
         P[state] = (np.mean(EV_Hit) > EV_Stay).astype(int)
     return P
 
-def plot_value(V, usable_ace = False):
-        fig = plt.figure()
-        fig.clf()
+def plot_v(V, usable_ace = False):
+        fig, ax = plt.subplots()
         ax = Axes3D(fig)
         
         states = list(V.keys())
@@ -68,6 +67,7 @@ def plot_value(V, usable_ace = False):
             ax.set_xlabel("Player's Sum")
             ax.set_ylabel("Dealer's Show Card")
             ax.set_zlabel("Perceived Value")
+            ax.set_title("Soft Sums")
             ax.view_init(elev=40, azim=-100)
         else:
             player_sum = np.array([state[0] for state in states_NOTace.keys()])
@@ -78,6 +78,7 @@ def plot_value(V, usable_ace = False):
             ax.set_xlabel("Player's Sum")
             ax.set_ylabel("Dealer's Show Card")
             ax.set_zlabel("Perceived Value")
+            ax.set_title("Hard Sums")
             ax.view_init(elev=40, azim=-100)
         return
 
@@ -204,3 +205,4 @@ def train(**kwargs):
 #model.reset_params()
 P_derived, V, loss_history = train()
 plot_loss(loss_history)
+plot_v(V)

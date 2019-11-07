@@ -58,8 +58,6 @@ class CompleteBlackjackEnv:
             self.dealer.append(self.deal_card())
         return
     
-    # TODO FIX!!
-    # specifically for function approximation 
     def future_states(self, state):
         curr_hand = self.player
         new_hands = [curr_hand + [card] for card in list(range(1,11)) + 3*[10]]

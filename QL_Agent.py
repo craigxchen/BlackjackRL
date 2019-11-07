@@ -2,13 +2,14 @@ from blackjack_complete import CompleteBlackjackEnv
 from collections import defaultdict
 from matplotlib import colors
 from matplotlib.ticker import AutoMinorLocator
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import random
 import pickle
 
-class QLearningAgent:
+class QLAgent:
     """
     A class used to group together common methods needed in Q-Learning
     
@@ -18,9 +19,6 @@ class QLearningAgent:
     ----------
     env : Object
         The environment the agent will interact with - in this case, simplified blackjack
-        
-    state_space : list
-        A list of tuples that describe all possible states of blackjack
 
     tau : float
         Temperature for softmax 
@@ -70,7 +68,6 @@ class QLearningAgent:
         """
         
         self.env = environment
-        self.state_space = self.env.state_space
         self.epsilon = epsilon
         self.gamma = gamma
         self.Q = defaultdict(lambda: np.zeros(len(self.env.action_space)))
@@ -127,16 +124,7 @@ class QLearningAgent:
         action : int
             0 or 1 (i.e. stand or hit)
         """
-#        #softmax
-#        temp = np.zeros(len(self.env.action_space))
-#        for a in self.env.action_space:
-#            sm = np.exp(self.Q[state][a]/self.tau)/np.sum(np.exp(self.Q[state]/self.tau))
-#            temp[a] = sm
-#            
-#        action = np.random.choice(self.env.action_space, p = temp)
-#        
-        
-        #epsilon-greedy
+        #decaying epsilon-greedy
         if random.uniform(0, 1) < self.epsilon:
             action = random.choice(self.env.action_space)
         else:
@@ -186,10 +174,6 @@ class QLearningAgent:
         """
         
         for idx in range(num_iterations):
-#            if self.tau < 0.05:
-#                self.tau = 0.05
-#            else:
-#                self.tau *= 0.999995
             if idx < 0.3*num_iterations:
                 self.epsilon *= 0.999995
             elif 0.3*num_iterations <= idx < 0.8*num_iterations:
@@ -273,7 +257,7 @@ def plot_policy(policy, usable_ace = False):
         ax.set_yticks(np.arange(10))
         ax.set_yticklabels(['A + 1', 'A + 2', 'A + 3', 'A + 4', 'A + 5', 'A + 6', 'A + 7', 'A + 8', 'A + 9', 'A + 10'])
         
-    ax.set_xticklabels(['A', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
+    ax.set_xticklabels(['2', '3', '4', '5', '6', '7', '8', '9', '10', 'A'])
     
     ax.set_xlabel('Dealer Show Card')
     if not usable_ace:
@@ -289,21 +273,62 @@ def plot_policy(policy, usable_ace = False):
     # manually define a new patch 
     patch1 = mpatches.Patch(color='green', label='Hit')
     patch2 = mpatches.Patch(color='red', label='Stand')
-    patch3 = mpatches.Patch(color='blue', label='Double Down')    
+#    patch3 = mpatches.Patch(color='blue', label='Double Down')    
     # plot the legend
-    plt.legend(handles=[patch1, patch2, patch3], loc='upper right')
+    plt.legend(handles=[patch1, patch2], loc='upper right')
     
     plt.show()
-    return            
+    return     
+
+def plot_v(V, usable_ace = False):
+    fig, ax = plt.subplots()
+    ax = Axes3D(fig)
+    
+    states = list(V.keys())
+    states_YESace = {}
+    states_NOTace = {}
+    for state in states:
+        if not state[2]:
+            states_NOTace[state] = V[state]
+        else: 
+            states_YESace[state] = V[state]
+    
+    if usable_ace == 1:
+        player_sum = [state[0] for state in states_YESace.keys()]
+        dealer_show = [state[1] for state in states_YESace.keys()]
+        scores = [val for val in states_YESace.values()]
+
+        ax.plot_trisurf(player_sum, dealer_show, scores, cmap="viridis", edgecolor="none")
+        ax.set_xlabel("Player's Sum")
+        ax.set_ylabel("Dealer's Show Card")
+        ax.set_zlabel("Perceived Value")
+        ax.set_title("Soft Sums")
+        ax.view_init(elev=40, azim=-100)
+    else:
+        player_sum = np.array([state[0] for state in states_NOTace.keys()])
+        dealer_show = np.array([state[1] for state in states_NOTace.keys()])
+        scores = np.array([val for val in states_NOTace.values()])
+
+        ax.plot_trisurf(player_sum, dealer_show, scores, cmap="viridis", edgecolor="none")
+        ax.set_xlabel("Player's Sum")
+        ax.set_ylabel("Dealer's Show Card")
+        ax.set_zlabel("Perceived Value")
+        ax.set_title("Hard Sums")
+        ax.view_init(elev=40, azim=-100)
+    return       
 
 if __name__ == '__main__':
     env = CompleteBlackjackEnv()
-    agent = QLearningAgent(env)
+    agent = QLAgent(env)
     
     agent.train(1000000)
     
     Q = agent.Q
     P = dict((k,np.argmax(v)) for k, v in Q.items())
+    V = dict((k,np.max(v)) for k,v in Q.items())
     agent.test(P, 100000)
     plot_policy(P)
     plot_policy(P, True)
+    plot_v(V)
+    plot_v(V, True)
+    
