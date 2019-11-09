@@ -13,16 +13,12 @@ rapid flexibility in customization.
 All Value Function Approximation (VFA) files are not complete
 
 ## Notes
-Outdated versions:
-VFA_TDv2 is meant to run on a CUDA-enabled GPU, although it is still somehow slower than training on the CPU
-VFA_TDv2_CPU is the most updated version, it trains on CPU
-VFA_TDv3 implements batch training on a CUDA-enabled GPU
-VFA_TDv4 is an implementation of a custom-written sequential neural net. (VFA_Net.py)
-* primary issue is that it converges to a constant function
 
 Up-to-date versions:
-VFA_TDv6 is functional, still does not converge to optimal
-VFA_TDv7 is a copy of v6, but gives risk-free area to edit state-mappings/input formats
+
+VFA_TDv6 is functional, still does not converge to optimal. 
+
+QL_Agent DOES converge to optimal, run QL_Agent.py to see what the optimal value function looks like.
 
 ## Authors
 
