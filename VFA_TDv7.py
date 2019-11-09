@@ -5,19 +5,21 @@ from matplotlib import colors
 from matplotlib.ticker import AutoMinorLocator
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import random
 import pickle
 import numpy as np
 
 nn_arq = [ #consider turning 3-vector into 1x1 value or 1-hot encoding
     {"input_dim": 1, "output_dim": 512, "activation": "relu"},
-    {"input_dim": 512, "output_dim": 1, "activation": "tanh"},
+    {"input_dim": 512, "output_dim": 2, "activation": "softmax"},
 ]
 
 ALPHA = 2000
 GAMMA = 1
 EPSILON = 0
 NUM_TRIALS = 100000
+
+def loss(target, prediction, alpha=1):
+    return float((1/alpha**2)*(target-alpha*prediction)**2)
 
 model = NeuralNetwork(nn_arq, double="yes")
 env = CompleteBlackjackEnv()
@@ -28,29 +30,55 @@ N = defaultdict(lambda: 0) # N table
 def process(state):
     return np.array(np.sum([state[0], state[1], state[2]*10])).reshape(1,1)
 
-def get_policy():
+def get_policy(V):
     P = {}
-    for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] 
-        + [(x, y, False) for x in range(4,22) for y in range(1, 11)]):
-        P[k] = policy(k, 0)
+    for state in V.keys():
+        EV_Hit = []
+        EV_Stay = model(process(state))
+        
+        fut_states, _ = env.future_states(state)
+        for fs in fut_states:
+            EV_Hit.append(model(process(state)))
+
+        P[state] = (np.mean(EV_Hit) > EV_Stay).astype(int)
     return P
 
-def policy(state, epsilon=EPSILON):
-    if random.uniform(0,1) < epsilon:
-        return env.action_space.sample()
-    else:
-        next_sums = [k + state[0] for k in list(range(1,11)) + 3*[10]]
-        for k in range(len(next_sums)):
-            if state[2] and next_sums[k] > 21:
-                next_sums[k] -= 10
-
-        next_states = [(x, state[1], state[2]) for x in next_sums]
-        next_values = [model(process(s)) for s in next_states]
+def plot_v(V, usable_ace = False):
+        fig, ax = plt.subplots()
+        ax = Axes3D(fig)
         
-        EV_hit = np.mean(next_values)
-        EV_stay = model(process(state))
-        action = EV_hit > EV_stay
-    return action[0][0]
+        states = list(V.keys())
+        states_YESace = {}
+        states_NOTace = {}
+        for state in states:
+            if not state[2]:
+                states_NOTace[state] = V[state]
+            else: 
+                states_YESace[state] = V[state]
+        
+        if usable_ace == 1:
+            player_sum = [state[0] for state in states_YESace.keys()]
+            dealer_show = [state[1] for state in states_YESace.keys()]
+            scores = [val for val in states_YESace.values()]
+
+            ax.plot_trisurf(player_sum, dealer_show, scores, cmap="viridis", edgecolor="none")
+            ax.set_xlabel("Player's Sum")
+            ax.set_ylabel("Dealer's Show Card")
+            ax.set_zlabel("Perceived Value")
+            ax.set_title("Soft Sums")
+            ax.view_init(elev=40, azim=-100)
+        else:
+            player_sum = np.array([state[0] for state in states_NOTace.keys()])
+            dealer_show = np.array([state[1] for state in states_NOTace.keys()])
+            scores = np.array([val for val in states_NOTace.values()])
+
+            ax.plot_trisurf(player_sum, dealer_show, scores, cmap="viridis", edgecolor="none")
+            ax.set_xlabel("Player's Sum")
+            ax.set_ylabel("Dealer's Show Card")
+            ax.set_zlabel("Perceived Value")
+            ax.set_title("Hard Sums")
+            ax.view_init(elev=40, azim=-100)
+        return
 
 def plot_policy(policy, usable_ace = False, save = True):
     if not usable_ace:
@@ -101,13 +129,26 @@ def plot_policy(policy, usable_ace = False, save = True):
     
     plt.show()
     
+    # TODO Fix
     if save:
         if usable_ace:
-            plt.savefig("VFA_policy_soft({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"])
-                , bbox_inches = 'tight')
+            fig.savefig("VFA_policy_soft({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"]), bbox_inches = 'tight')
         else:
-            plt.savefig("VFA_policy_hard({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"])
-            , bbox_inches = 'tight')
+            fig.savefig("VFA_policy_hard({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"]), bbox_inches = 'tight')
+    return
+
+def plot_loss(y):
+    fig, ax = plt.subplots()
+    label_fontsize = 18
+
+    t = np.arange(0,len(y))
+    ax.plot(t[::100],y[::100])
+        
+    ax.set_xlabel('Trials',fontsize=label_fontsize)
+    ax.set_ylabel('Loss',fontsize=label_fontsize)
+
+    plt.grid(True)
+    plt.show()
     return
 
 # %% training
