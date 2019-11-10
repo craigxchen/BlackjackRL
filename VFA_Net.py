@@ -57,6 +57,8 @@ class NeuralNetwork:
             return self.sigmoid(z), z
         elif activation == 'tanh':
             return self.tanh(z), z
+        elif activation == 'leakyRelu':
+            return self.leakyRelu(z), z
         else: 
             raise Exception('activation function currently not supported')
     
@@ -83,6 +85,8 @@ class NeuralNetwork:
             dZ = dA * self.dsigmoid(z_n)
         elif activation == 'tanh':
             dZ = dA * self.dtanh(z_n)
+        elif activation == 'leakyRelu':
+            dZ = dA * self.dleakyRelu(z_n)
         else:
             raise Exception('activation function currently not supported')
         
@@ -161,3 +165,9 @@ class NeuralNetwork:
         
     def dtanh(self, x):
         return 1 - self.tanh(x)**2
+    
+    def leakyRelu(self, x, a=0.2):
+        return np.maximum(a*x, x)
+    
+    def dleakyRelu(self, x, a=0.2):
+        return (x > 0).astype(int) - a*(x < 0).astype(int)
