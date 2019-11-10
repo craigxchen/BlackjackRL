@@ -33,13 +33,13 @@ def process(state):
     # don't forget to change the input dim of the neural net
     
     '''normalized vector'''
-#    return np.array([state[0]/(max(env.state_space)[0]/2), state[1]/(max(env.state_space)[1]/2), state[2]]).reshape((3,1))
+    return np.array([state[0]/(max(env.state_space)[0]/2), state[1]/(max(env.state_space)[1]/2), state[2]]).reshape((3,1))
     '''stretched vector'''
 #    return np.array([state[0]*10, state[1]*10, state[2]*10]).reshape(3,1)
     '''sum all'''
 #    return np.array(np.sum([state[0], state[1], state[2]])).reshape((1,1))
     '''standard vector'''
-    return np.array([state[0], state[1], state[2]]).reshape((3,1))
+#    return np.array([state[0], state[1], state[2]]).reshape((3,1))
 
 def get_policy(V):
     P = {}
@@ -159,6 +159,7 @@ def plot_loss(y):
     t = np.arange(0,len(y))
     ax.plot(t[::100],y[::100])
         
+    ax.set_yscale('log')
     ax.set_xlabel('Trials',fontsize=label_fontsize)
     ax.set_ylabel('Loss',fontsize=label_fontsize)
 
