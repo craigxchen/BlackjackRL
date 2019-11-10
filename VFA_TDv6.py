@@ -10,27 +10,36 @@ import pickle
 import numpy as np
 
 nn_arq = [ #consider turning 3-vector into 1x1 value or 1-hot encoding
-    {"input_dim": 3, "output_dim": 512, "activation": "relu"},
-    {"input_dim": 512, "output_dim": 1, "activation": "none"},
+    {"input_dim": 3, "output_dim": 64, "activation": "leakyRelu"},
+    {"input_dim": 64, "output_dim": 1, "activation": "none"},
 ]
 
 ALPHA = 1000
 GAMMA = 1
 EPSILON = 0
-NUM_TRIALS = 100000
-
+NUM_TRIALS = 1000000
 
 def loss(target, prediction, alpha=1):
     return float((1/alpha**2)*(target-alpha*prediction)**2)
 
-model = NeuralNetwork(nn_arq)
+model = NeuralNetwork(nn_arq, double = "no")
 env = CompleteBlackjackEnv()
 
 N = defaultdict(lambda: 0) # N table
 # %% 
 
 def process(state):
-    return np.array([state[0]/(max(env.state_space)[0]/2), state[1]/(max(env.state_space)[1]/2), state[2]]).reshape((3,1))
+    # uncomment return statements for different types of feature mappings, 
+    # don't forget to change the input dim of the neural net
+    
+    '''normalized vector'''
+#    return np.array([state[0]/(max(env.state_space)[0]/2), state[1]/(max(env.state_space)[1]/2), state[2]]).reshape((3,1))
+    '''stretched vector'''
+#    return np.array([state[0]*10, state[1]*10, state[2]*10]).reshape(3,1)
+    '''sum all'''
+#    return np.array(np.sum([state[0], state[1], state[2]])).reshape((1,1))
+    '''standard vector'''
+    return np.array([state[0], state[1], state[2]]).reshape((3,1))
 
 def get_policy(V):
     P = {}
@@ -105,10 +114,12 @@ def plot_policy(policy, usable_ace = False, save = True):
     ax.set_xticks(np.arange(10))
     if not usable_ace:
         ax.set_yticks(np.arange(18))
-        ax.set_yticklabels(['4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21'])
+        ax.set_yticklabels(['4', '5', '6', '7', '8', '9', '10', '11', '12', '13', 
+                            '14', '15', '16', '17', '18', '19', '20', '21'])
     else:
         ax.set_yticks(np.arange(10))
-        ax.set_yticklabels(['A + 1', 'A + 2', 'A + 3', 'A + 4', 'A + 5', 'A + 6', 'A + 7', 'A + 8', 'A + 9', 'A + 10'])
+        ax.set_yticklabels(['A + 1', 'A + 2', 'A + 3', 'A + 4', 'A + 5', 'A + 6', 
+                            'A + 7', 'A + 8', 'A + 9', 'A + 10'])
         
     ax.set_xticklabels(['A', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
     
@@ -134,9 +145,11 @@ def plot_policy(policy, usable_ace = False, save = True):
     # TODO Fix
     if save:
         if usable_ace:
-            fig.savefig("VFA_policy_soft({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"]), bbox_inches = 'tight')
+            fig.savefig("VFA_policy_soft({}trials,{}alpha,{}learningrate,{}neurons).png"
+                        .format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"]), bbox_inches = 'tight')
         else:
-            fig.savefig("VFA_policy_hard({}trials,{}alpha,{}learningrate,{}neurons).png".format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"]), bbox_inches = 'tight')
+            fig.savefig("VFA_policy_hard({}trials,{}alpha,{}learningrate,{}neurons).png"
+                        .format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"]), bbox_inches = 'tight')
     return
 
 def plot_loss(y):
@@ -185,8 +198,7 @@ def train(**kwargs):
             
             y_hat = model.net_forward(process(state))
             
-#            lr = min(1/(ALPHA*(1+N[state])**0.85), 0.001)
-            lr = 0.001/ALPHA
+            lr = 0.001
             
             game_loss.append(loss(y, y_hat, ALPHA))
             model.net_backward(y, y_hat, ALPHA)
@@ -195,14 +207,15 @@ def train(**kwargs):
             state = next_state   
         loss_history.append(np.mean(game_loss))
     
-    V = dict((k,model(process(k))[0][0]) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
+    V = dict((k,model(process(k)).item()) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
     P_derived = get_policy(V)
     
-    plot_policy(P_derived, save=False)
-    plot_policy(P_derived, True, save=False)
     return P_derived, V, loss_history
 
 #model.reset_params()
 P_derived, V, loss_history = train()
 plot_loss(loss_history)
+plot_policy(P_derived, save=False)
+plot_policy(P_derived, True, save=False)
 plot_v(V)
+plot_v(V, True)
