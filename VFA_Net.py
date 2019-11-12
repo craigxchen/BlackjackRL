@@ -2,11 +2,11 @@ import numpy as np
 from collections import defaultdict
 
 class NeuralNetwork:
-    def __init__(self, nn_structure, batch_size=1, double="no", loss=None):
+    def __init__(self, nn_structure, bias = True, double="no"):
         self.nn_structure = nn_structure
         self.num_layers = len(nn_structure)
-        self.batch_size = batch_size
         self.parameters = {}
+        self.bias = bias
         
         # intializes dictionaries needed to store values for backpropagation
         self.memory = {}
@@ -14,26 +14,20 @@ class NeuralNetwork:
         
 #        np.random.seed(1)
         for idx, layer in enumerate(self.nn_structure):
+                
             layer_input_size = layer["input_dim"]
             layer_output_size = layer["output_dim"] 
-            # using He intialization for ReLU
-#            # np.tile to create 3D array
-#            self.parameters['w_' + str(idx)] = np.tile(np.random.randn(layer_output_size, layer_input_size)
-#                                , (self.batch_size, 1, 1)) * np.sqrt(2/layer_input_size)                                            
-#            self.parameters['b_' + str(idx)] = np.tile(np.random.randn(layer_output_size, 1) * 0.1
-#                                , (self.batch_size, 1, 1))
-            if double == "yes":
-                temp_w = np.random.random(size=layer_output_size*layer_input_size).tolist()
-                dbl_w = [k*(-1**i) for k,i in zip(temp_w,range(len(temp_w)))]
-                
-                temp_b = np.random.random(size=layer_output_size).tolist()
-                dbl_b = [k*(-1**i) for k,i in zip(temp_b,range(len(temp_b)))]
-                
-                self.parameters['w_' + str(idx)] = np.array(dbl_w).reshape(layer_output_size, layer_input_size)
-                self.parameters['b_' + str(idx)] = np.array(dbl_b).reshape(layer_output_size, 1)
-            else:
-                self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size)
+
+            if bias:
                 self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1)
+            else:
+                self.parameters['b_' + str(idx)] = np.zeros((layer_output_size,1))
+
+            self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size)
+            
+            if double == "yes" and idx == self.num_layers-1:
+                # sets weights of last layer to 0
+                self.parameters['w_' + str(idx)] = np.zeros((layer_output_size, layer_input_size))              
             
     def __call__(self, a0):
         a_prev = a0
@@ -60,6 +54,8 @@ class NeuralNetwork:
             return self.tanh(z), z
         elif activation == 'leakyRelu':
             return self.leakyRelu(z), z
+        elif activation == 'quadratic':
+            return self.quadratic(z), z
         else: 
             raise Exception('activation function currently not supported')
     
@@ -88,12 +84,17 @@ class NeuralNetwork:
             dZ = dA * self.dtanh(z_n)
         elif activation == 'leakyRelu':
             dZ = dA * self.dleakyRelu(z_n)
+        elif activation == 'quadratic':
+            dZ = dA * self.dquadratic(z_n)
         else:
             raise Exception('activation function currently not supported')
         
         dA_prev = np.matmul(w_n.T, dZ)
         dW = np.matmul(dZ, a_prev.T)
-        dB = dZ
+        if self.bias:
+            dB = dZ
+        else:
+            dB = np.zeros(dZ.shape)
         
         return dA_prev, dW, dB 
     
@@ -124,7 +125,6 @@ class NeuralNetwork:
             self.parameters['b_' + str(idx)] -= step_size*self.grad_values['dB_' + str(idx)]
         return
     
-    # TODO Fix - gradient seems to be exploding somehow?
     def batch_update_wb(self, step_size, grad_values):
         temp = defaultdict(lambda: [])
         for i in range(len(grad_values)):
@@ -164,11 +164,11 @@ class NeuralNetwork:
     def sigmoid(self, x):
         return 1/(1 + np.exp(-x))
     
-    def relu(self, x):
-        return np.maximum(0,x)
-    
     def dsigmoid(self, x):
         return np.multiply(self.sigmoid(x), np.ones(x.shape) - self.sigmoid(x))
+    
+    def relu(self, x):
+        return np.maximum(0,x)
     
     def drelu(self, x):
         return (x > 0).astype(int)
@@ -184,3 +184,9 @@ class NeuralNetwork:
     
     def dleakyRelu(self, x, a=0.2):
         return (x > 0).astype(int) - a*(x < 0).astype(int)
+
+    def quadratic(self, x):
+        return np.square(x)
+    
+    def dquadratic(self, x):
+        return 2*x

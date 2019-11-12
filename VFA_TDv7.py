@@ -9,20 +9,19 @@ import pickle
 import numpy as np
 
 nn_arq = [ #consider turning 3-vector into 1x1 value or 1-hot encoding
-    {"input_dim": 280, "output_dim": 512, "activation": "leakyRelu"},
+    {"input_dim": 3, "output_dim": 512, "activation": "quadratic"},
     {"input_dim": 512, "output_dim": 1, "activation": "none"},
 ]
 
 ALPHA = 1000
 GAMMA = 1
-EPSILON = 0
-NUM_TRIALS = 100000
-BATCH_SIZE = 32
+NUM_TRIALS = 10000
+BATCH_SIZE = 64
 
 def loss(target, prediction, alpha=1):
-    return float((1/alpha**2)*(target-alpha*prediction)**2)
+    return float((target-alpha*prediction)**2)
 
-model = NeuralNetwork(nn_arq, double = "no")   
+model = NeuralNetwork(nn_arq, double = "yes")   
 env = CompleteBlackjackEnv()
 
 # %% 
@@ -32,7 +31,7 @@ def process(state):
     # don't forget to change the input dim of the neural net
     
     '''normalized vector''' 
-#    return np.array([state[0]/(max(env.state_space)[0]/2), state[1]/(max(env.state_space)[1]/2), state[2]]).reshape((3,1))
+    return np.array([state[0]/(max(env.state_space)[0]), state[1]/(max(env.state_space)[1]), state[2]]).reshape((3,1))
     '''stretched vector'''
 #    return np.array([state[0]*10, state[1]*10, state[2]*10]).reshape(3,1)
     '''sum all'''
@@ -40,7 +39,7 @@ def process(state):
     '''standard vector'''
 #    return np.array([state[0], state[1], state[2]]).reshape((3,1))
     '''one-hot'''
-    return np.array([int(state == k) for k in env.state_space]).reshape(len(env.state_space),1)
+#    return np.array([int(state == k) for k in env.state_space]).reshape(len(env.state_space),1)
 
 def get_policy(V):
     P = {}
@@ -50,7 +49,7 @@ def get_policy(V):
         
         fut_states, _ = env.future_states(state)
         for fs in fut_states:
-            EV_Hit.append(model(process(state)))
+            EV_Hit.append(model(process(fs)))
 
         P[state] = (np.mean(EV_Hit) > EV_Stay)[0][0].astype(int)
     return P
@@ -189,13 +188,13 @@ def train(**kwargs):
                 next_state, reward, done = env.step(action)
     
                 if action == 1:
-    #                    fut_vals = []
-    #                    fut_states, fut_rewards = env.future_states(state)
-    #                    for s,r in zip(fut_states, fut_rewards):
-    #                        fut_vals.append(r + GAMMA*model(process(s)))
-    #                    
-    #                    y = np.mean(fut_vals)
-                    y = reward + GAMMA*model(process(next_state))
+                    fut_vals = []
+                    fut_states, fut_rewards = env.future_states(state)
+                    for s,r in zip(fut_states, fut_rewards):
+                        fut_vals.append(r + ALPHA*GAMMA*model(process(s)))
+                    
+                    y = np.mean(fut_vals)
+#                    y = reward + ALPHA*GAMMA*model(process(next_state))
                 else:
                     y = reward
                 
@@ -206,11 +205,11 @@ def train(**kwargs):
                 
                 state = next_state
         
-        lr = 0.001
+        lr = min(0.001,1/(1+i)**0.85)
         model.batch_update_wb(lr, grad_values)
         
     
-    V = dict((k,model(process(k)).item()) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
+    V = dict((k,ALPHA*model(process(k)).item()) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
     P_derived = get_policy(V)
     
     return P_derived, V, loss_history

@@ -1,6 +1,5 @@
 from VFA_Net import NeuralNetwork
 from blackjack_complete_TEST import CompleteBlackjackEnv
-from collections import defaultdict
 from matplotlib import colors
 from matplotlib.ticker import AutoMinorLocator
 from mpl_toolkits.mplot3d import Axes3D
@@ -9,37 +8,57 @@ import matplotlib.patches as mpatches
 import pickle
 import numpy as np
 
-nn_arq = [ #consider turning 3-vector into 1x1 value or 1-hot encoding
-    {"input_dim": 3, "output_dim": 64, "activation": "leakyRelu"},
-    {"input_dim": 64, "output_dim": 1, "activation": "none"},
+# try last-layer zeros or doubling
+# lowering step size
+# increasing alpha
+# try batch update
+
+"""
+test results:
+    
+    using ALPHA = 1000, GAMMA = 1,
+    NUM_TRIALS = 100000 and 500000
+    512 neurons in hidden layer
+    
+    function initialized to zero
+    
+    converges when:
+        1-hot encoding and relu, leakyRelu
+        normalized vector encoding and _
+"""
+
+
+nn_arq = [
+    {"input_dim": 3, "output_dim": 512, "activation": "relu"},
+    {"input_dim": 512, "output_dim": 1, "activation": "none"},
 ]
 
 ALPHA = 1000
 GAMMA = 1
-EPSILON = 0
-NUM_TRIALS = 1000000
+NUM_TRIALS = 500000
 
 def loss(target, prediction, alpha=1):
-    return float((1/alpha**2)*(target-alpha*prediction)**2)
+    return float((1/(alpha**2))*np.square(target-alpha*prediction))
 
-model = NeuralNetwork(nn_arq, double = "no")
+model = NeuralNetwork(nn_arq, bias = True, double = "yes")   
 env = CompleteBlackjackEnv()
 
-N = defaultdict(lambda: 0) # N table
 # %% 
 
 def process(state):
     # uncomment return statements for different types of feature mappings, 
     # don't forget to change the input dim of the neural net
     
-    '''normalized vector'''
-    return np.array([state[0]/(max(env.state_space)[0]/2), state[1]/(max(env.state_space)[1]/2), state[2]]).reshape((3,1))
+    '''normalized vector''' 
+    return np.array([state[0]/(max(env.state_space)[0]), state[1]/(max(env.state_space)[1]), state[2]]).reshape((3,1))
     '''stretched vector'''
 #    return np.array([state[0]*10, state[1]*10, state[2]*10]).reshape(3,1)
     '''sum all'''
 #    return np.array(np.sum([state[0], state[1], state[2]])).reshape((1,1))
     '''standard vector'''
 #    return np.array([state[0], state[1], state[2]]).reshape((3,1))
+    '''one-hot'''
+#    return np.array([int(state == k) for k in env.state_space]).reshape(len(env.state_space),1)
 
 def get_policy(V):
     P = {}
@@ -48,10 +67,11 @@ def get_policy(V):
         EV_Stay = model(process(state))
         
         fut_states, _ = env.future_states(state)
+#        fut_states = [f for f in fut_states if f[0] <= 21]
         for fs in fut_states:
-            EV_Hit.append(model(process(state)))
+            EV_Hit.append(model(process(fs)))
 
-        P[state] = (np.mean(EV_Hit) > EV_Stay).astype(int)
+        P[state] = (np.mean(EV_Hit) > EV_Stay)[0][0].astype(int)
     return P
 
 def plot_v(V, usable_ace = False):
@@ -157,7 +177,7 @@ def plot_loss(y):
     label_fontsize = 18
 
     t = np.arange(0,len(y))
-    ax.plot(t[::100],y[::100])
+    ax.plot(t[::int(NUM_TRIALS/500)],y[::int(NUM_TRIALS/500)])
         
     ax.set_yscale('log')
     ax.set_xlabel('Trials',fontsize=label_fontsize)
@@ -171,7 +191,6 @@ def plot_loss(y):
 with open("near_optimal", 'rb') as f:
     P_star = pickle.load(f)    
 
-
 def train(**kwargs):
     loss_history = []
     for i in range(NUM_TRIALS):
@@ -182,8 +201,6 @@ def train(**kwargs):
         done = False
         
         while not done:
-            game_loss = []
-            N[state]+=1
             action = P_star[state]
             next_state, reward, done = env.step(action)
 
@@ -191,9 +208,10 @@ def train(**kwargs):
                 fut_vals = []
                 fut_states, fut_rewards = env.future_states(state)
                 for s,r in zip(fut_states, fut_rewards):
-                    fut_vals.append(r + GAMMA*model(process(s)))
+                    fut_vals.append(r + ALPHA*GAMMA*model(process(s)))
                 
                 y = np.mean(fut_vals)
+#                y = reward + ALPHA*GAMMA*model(process(next_state))
             else:
                 y = reward
             
@@ -201,12 +219,12 @@ def train(**kwargs):
             
             lr = 0.001
             
-            game_loss.append(loss(y, y_hat, ALPHA))
+            loss_history.append(loss(y, y_hat, ALPHA))
             model.net_backward(y, y_hat, ALPHA)
             model.update_wb(lr)
             
             state = next_state   
-        loss_history.append(np.mean(game_loss))
+        
     
     V = dict((k,model(process(k)).item()) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
     P_derived = get_policy(V)
