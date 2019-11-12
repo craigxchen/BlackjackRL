@@ -1,10 +1,11 @@
 import numpy as np
+from collections import defaultdict
 
 class NeuralNetwork:
-    def __init__(self, nn_structure, double="no", loss=None):
+    def __init__(self, nn_structure, batch_size=1, double="no", loss=None):
         self.nn_structure = nn_structure
         self.num_layers = len(nn_structure)
-        
+        self.batch_size = batch_size
         self.parameters = {}
         
         # intializes dictionaries needed to store values for backpropagation
@@ -22,10 +23,10 @@ class NeuralNetwork:
 #            self.parameters['b_' + str(idx)] = np.tile(np.random.randn(layer_output_size, 1) * 0.1
 #                                , (self.batch_size, 1, 1))
             if double == "yes":
-                temp_w = (np.random.random(size=layer_output_size*layer_input_size)*np.sqrt(1/layer_input_size)).tolist()
+                temp_w = np.random.random(size=layer_output_size*layer_input_size).tolist()
                 dbl_w = [k*(-1**i) for k,i in zip(temp_w,range(len(temp_w)))]
                 
-                temp_b = (np.random.random(size=layer_output_size)*np.sqrt(1/layer_input_size)).tolist()
+                temp_b = np.random.random(size=layer_output_size).tolist()
                 dbl_b = [k*(-1**i) for k,i in zip(temp_b,range(len(temp_b)))]
                 
                 self.parameters['w_' + str(idx)] = np.array(dbl_w).reshape(layer_output_size, layer_input_size)
@@ -115,12 +116,24 @@ class NeuralNetwork:
             self.grad_values['dW_' + str(idx)] = dW
             self.grad_values['dB_' + str(idx)] = dB
             
-        return
+        return self.grad_values
     
     def update_wb(self, step_size):
         for idx, layer in enumerate(self.nn_structure):
             self.parameters['w_' + str(idx)] -= step_size*self.grad_values['dW_' + str(idx)] 
             self.parameters['b_' + str(idx)] -= step_size*self.grad_values['dB_' + str(idx)]
+        return
+    
+    # TODO Fix - gradient seems to be exploding somehow?
+    def batch_update_wb(self, step_size, grad_values):
+        temp = defaultdict(lambda: [])
+        for i in range(len(grad_values)):
+            for idx, _ in enumerate(self.nn_structure):
+                temp['dW_'+str(idx)].append(grad_values[str(i)]['dW_'+str(idx)])
+                temp['dB_'+str(idx)].append(grad_values[str(i)]['dB_'+str(idx)])
+        for idx, layer in enumerate(self.nn_structure):
+            self.parameters['w_' + str(idx)] -= step_size*np.mean(temp['dW_' + str(idx)], axis=0)
+            self.parameters['b_' + str(idx)] -= step_size*np.mean(temp['dB_' + str(idx)], axis=0)
         return
     
     def save_model(self, name):
