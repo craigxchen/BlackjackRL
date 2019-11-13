@@ -20,6 +20,18 @@ VFA_TDv6 is functional, still does not converge to optimal.
 
 QL_Agent DOES converge to optimal, run QL_Agent.py to see what the optimal value function looks like.
 
+## Test Results:
+
+VFA_TDv6:
+
+using 512 neurons in hidden layer, ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000 and 500000, function initialized to zero
+    
+converges for:
+
+1-hot encoding and relu, leakyRelu -- see results folder
+
+normalized vector encoding still does not converge
+
 ## Authors
 
 * **Craig Chen** - *Initial work* - [craigxchen](https://github.com/craigxchen)
