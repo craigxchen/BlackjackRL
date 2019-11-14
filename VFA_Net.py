@@ -2,30 +2,32 @@ import numpy as np
 from collections import defaultdict
 
 class NeuralNetwork:
-    def __init__(self, nn_structure, bias = True, double="no"):
+    def __init__(self, nn_structure, bias=True, double=False, seed=None):
         self.nn_structure = nn_structure
         self.num_layers = len(nn_structure)
         self.parameters = {}
         self.bias = bias
+        self.double = double
         
         # intializes dictionaries needed to store values for backpropagation
         self.memory = {}
         self.grad_values = {}
         
-#        np.random.seed(1)
+        if seed is not None:
+            np.random.seed(seed)
         for idx, layer in enumerate(self.nn_structure):
                 
             layer_input_size = layer["input_dim"]
             layer_output_size = layer["output_dim"] 
 
-            if bias:
+            if self.bias:
                 self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1)
             else:
                 self.parameters['b_' + str(idx)] = np.zeros((layer_output_size,1))
 
             self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size)
             
-            if double == "yes" and idx == self.num_layers-1:
+            if self.double and idx == self.num_layers-1:
                 # sets weights of last layer to 0
                 self.parameters['w_' + str(idx)] = np.zeros((layer_output_size, layer_input_size))              
             
@@ -129,8 +131,8 @@ class NeuralNetwork:
         temp = defaultdict(lambda: [])
         for i in range(len(grad_values)):
             for idx, _ in enumerate(self.nn_structure):
-                temp['dW_'+str(idx)].append(grad_values[str(i)]['dW_'+str(idx)])
-                temp['dB_'+str(idx)].append(grad_values[str(i)]['dB_'+str(idx)])
+                temp['dW_'+str(idx)].append(grad_values[i]['dW_'+str(idx)])
+                temp['dB_'+str(idx)].append(grad_values[i]['dB_'+str(idx)])
         for idx, layer in enumerate(self.nn_structure):
             self.parameters['w_' + str(idx)] -= step_size*np.mean(temp['dW_' + str(idx)], axis=0)
             self.parameters['b_' + str(idx)] -= step_size*np.mean(temp['dB_' + str(idx)], axis=0)
@@ -148,17 +150,24 @@ class NeuralNetwork:
             self.parameters['b_' + str(idx)] = npfile['b_' + str(idx)]
         return
     
-    def reset_params(self):
-        self.parameters = {}
-        self.memory = {}
-        self.grad_values = {}
+    def reset(self, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
         for idx, layer in enumerate(self.nn_structure):
+                
             layer_input_size = layer["input_dim"]
             layer_output_size = layer["output_dim"] 
+
+            if self.bias:
+                self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1)
+            else:
+                self.parameters['b_' + str(idx)] = np.zeros((layer_output_size,1))
+
+            self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size)
             
-            self.parameters['w_' + str(idx)] = np.random.randn(layer_output_size, layer_input_size) * np.sqrt(1/layer_input_size)
-            self.parameters['b_' + str(idx)] = np.random.randn(layer_output_size, 1) * 0.1
-        return
+            if self.double and idx == self.num_layers-1:
+                # sets weights of last layer to 0
+                self.parameters['w_' + str(idx)] = np.zeros((layer_output_size, layer_input_size))              
     
     # activation functions
     def sigmoid(self, x):
