@@ -3,34 +3,37 @@
 
 ## Getting Started
 
-QL_Agent is equipped with typical methods used in decaying epsilon-greey Q-learning.
+QL_Agent is equipped with typical methods used in decaying epsilon-greey Q-learning. Consistently converges to optimal.
 
 Blackjack_Complete is a customizable blackjack environment for a learning agent to interact with
 
 VFA_Net is a sequential neural net written using primarily Numpy. This is used in place of PyTorch or Tensorflow due to the need for 
 rapid flexibility in customization.
 
-All Value Function Approximation (VFA) files are not complete
+VFA_TD is a work in progress.
 
 ## Notes
 
 Up-to-date versions:
 
-VFA_TDv6 is functional, still does not converge to optimal. 
+VFA_TDv6 is functional
 
-QL_Agent DOES converge to optimal, run QL_Agent.py to see what the optimal value function looks like.
+Blackjack_Complete_TEST is the same as the original version; however, it includes a few extra functions to simplify life in the TD learning model.
 
 ## Test Results:
 
-VFA_TDv6:
+Using **1-hot encoding**, the neural net converges in both VFA_TDv6 and v7. Also loosely converged when sampling instead of computing expected value for the TD update.
 
-using 512 neurons in hidden layer, ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000 and 500000, function initialized to zero
-    
-converges for:
+Parameters: 512 neurons, ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000 and 500000, function initialized to zero
 
-1-hot encoding and relu, leakyRelu -- see results folder
+Non-linearities: ReLU -- see results folder
 
-normalized vector encoding still does not converge
+
+Using **normalized 3-vector**, the neural net sometimes converges.
+
+Parameters: 2048 neurons, ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000,500000,1000000 function initialized to zero 
+
+Non-linearities: ReLU
 
 ## Authors
 
