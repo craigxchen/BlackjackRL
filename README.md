@@ -22,18 +22,18 @@ Blackjack_Complete_TEST is the same as the original version; however, it include
 
 ## Test Results:
 
-Using **1-hot encoding**, the neural net converges in both VFA_TDv6 and v7. Also loosely converged when sampling instead of computing expected value for the TD update.
+Using **1-hot encoding**, the neural net converges (VFA_TDv6). Also loosely converged when sampling instead of computing expected value for the TD update.
 
 Parameters: 512 neurons, ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000 and 500000, function initialized to zero
 
 Non-linearities: ReLU -- see results folder
 
 
-Using **normalized 3-vector**, the neural net sometimes converges.
+Using **normalized 3-vector**, the neural net converges (VFA_TDv6).
 
-Parameters: 2048 neurons, ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000,500000,1000000 function initialized to zero 
+Parameters: 512neurons, ALPHA = 100, GAMMA = 1, NUM_TRIALS = 100000 function initialized to zero 
 
-Non-linearities: ReLU
+Non-linearities: ReLU -- see results folder
 
 ## Authors
 
