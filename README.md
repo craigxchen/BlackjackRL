@@ -14,6 +14,8 @@ rapid flexibility in customization.
 
 VFA_TD0 is functional; however, can be further optimized. 
 
+VFA_TD0_Batch is VFA_TD0, but capable of learning in batches of arbirtrary size - with batch size = 1, this is the same as VFA_TD0.
+
 ## Test Results:
 
 Using **1-hot encoding**, the neural net converges (VFA_TDv6). Also loosely converged when sampling instead of computing expected value for the TD update.
