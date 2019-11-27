@@ -29,7 +29,7 @@ Parameters: 512 neurons, ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000 and 500000
 Non-linearities: ReLU -- see results folder
 
 
-Using **normalized 3-vector**, the neural net converges (VFA_TDv6).
+Using **normalized 3-vector**, the neural net converges (VFA_TDv6). Also converged when sampling instead of computing expected value (500000 trials)
 
 Parameters: 512neurons, ALPHA = 100, GAMMA = 1, NUM_TRIALS = 100000 function initialized to zero 
 
