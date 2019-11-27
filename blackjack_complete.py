@@ -42,6 +42,18 @@ class CompleteBlackjackEnv:
         while self.sum_hand(self.dealer) < 17:
             self.dealer.append(self.deal_card())
         return
+    
+    def future_states(self, state):
+        curr_hand = self.player
+        new_hands = [curr_hand + [card] for card in list(range(1,11)) + 3*[10]]
+        states = [(self.sum_hand(x), state[1], state[2]) for x in new_hands]
+        rewards = []
+        for s in states:
+            if self.is_bust(self.player):
+                rewards.append(-1)
+            else:
+                rewards.append(0)
+        return states, rewards
        
     # all methods below were taken from OpenAI Gym's blackjack environment
     # ALL credit for code below goes to OpenAI 
