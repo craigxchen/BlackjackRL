@@ -155,6 +155,7 @@ def plot_policy(policy, usable_ace = False, save = True):
                         .format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"]), bbox_inches = 'tight')
     return
 
+# TODO change to scatter plot and add best-fit line
 def plot_loss(y):
     fig, ax = plt.subplots()
     label_fontsize = 18
@@ -173,7 +174,7 @@ def plot_loss(y):
 # %% training
     
 model.reset()
-with open("near_optimal", 'rb') as f:
+with open("input_policy", 'rb') as f:
     P_star = pickle.load(f)    
 
 loss_history = []

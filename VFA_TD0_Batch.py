@@ -171,7 +171,7 @@ def plot_loss(y):
     return
 
 # %% training
-with open("near_optimal", 'rb') as f:
+with open("input_policy", 'rb') as f:
     P_star = pickle.load(f)    
 
 def train(**kwargs):
