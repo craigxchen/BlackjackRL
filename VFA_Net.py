@@ -35,8 +35,8 @@ class NeuralNetwork:
                 # sets weights of last layer to 0
                 if initVarLast != 0:
                     for i in range(layer_output_size):
-                        halfArray = np.random.normal(0, self.initVarLast, layer_input_size/2)
-                        self.parameters['w_' + str(idx)][i] = np.concatenate(halfArray,np.negative[halfArray])
+                        halfArray = np.random.normal(0, self.initVarLast, int(layer_input_size/2))
+                        self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
                 else:
                     self.parameters['w_' + str(idx)] = np.zeros((layer_output_size,layer_input_size))
 
@@ -181,8 +181,8 @@ class NeuralNetwork:
                 # sets weights of last layer to 0
                 if initVarLast != 0:
                     for i in range(layer_output_size):
-                        halfArray = np.random.normal(0, self.initVarLast, layer_input_size/2)
-                        self.parameters['w_' + str(idx)][i] = np.concatenate(halfArray,np.negative[halfArray])
+                        halfArray = np.random.normal(0, self.initVarLast, int(layer_input_size/2))
+                        self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
                 else:
                     self.parameters['w_' + str(idx)] = np.zeros((layer_output_size,layer_input_size))
 
