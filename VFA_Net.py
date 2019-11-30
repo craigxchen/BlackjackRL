@@ -27,7 +27,7 @@ class NeuralNetwork:
             else:
                 self.parameters['b_' + str(idx)] = np.zeros((layer_output_size,1))
 
-            self.parameters['w_' + str(idx)] = np.random.normal(0, self.initVar, (layer_output_size, layer_input_size))
+            self.parameters['w_' + str(idx)] = np.random.normal(0, self.initVar/layer_input_size, (layer_output_size, layer_input_size))
 
             if self.double and idx == self.num_layers-1:
                 if layer_input_size%2 != 0:
@@ -35,7 +35,7 @@ class NeuralNetwork:
                 # sets weights of last layer to 0
                 if initVarLast != 0:
                     for i in range(layer_output_size):
-                        halfArray = np.random.normal(0, self.initVarLast, int(layer_input_size/2))
+                        halfArray = np.random.normal(0, self.initVarLast/layer_input_size, int(layer_input_size/2))
                         self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
                 else:
                     self.parameters['w_' + str(idx)] = np.zeros((layer_output_size,layer_input_size))
@@ -173,7 +173,7 @@ class NeuralNetwork:
             else:
                 self.parameters['b_' + str(idx)] = np.zeros((layer_output_size,1))
 
-            self.parameters['w_' + str(idx)] = np.random.normal(0, self.initVar, (layer_output_size, layer_input_size))
+            self.parameters['w_' + str(idx)] = np.random.normal(0, self.initVar/layer_input_size, (layer_output_size, layer_input_size))
 
             if self.double and idx == self.num_layers-1:
                 if layer_input_size%2 != 0:
@@ -181,7 +181,7 @@ class NeuralNetwork:
                 # sets weights of last layer to 0
                 if initVarLast != 0:
                     for i in range(layer_output_size):
-                        halfArray = np.random.normal(0, self.initVarLast, int(layer_input_size/2))
+                        halfArray = np.random.normal(0, self.initVarLast/layer_input_size, int(layer_input_size/2))
                         self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
                 else:
                     self.parameters['w_' + str(idx)] = np.zeros((layer_output_size,layer_input_size))
