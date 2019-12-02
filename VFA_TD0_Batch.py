@@ -48,8 +48,10 @@ def get_policy(V):
         
         fut_states, _ = env.future_states(state)
         for fs in fut_states:
-            if fs[0] <= 21: #sets terminal states to zero
+            if fs[0] <= 21: 
                 EV_Hit.append(model(process(fs)))
+            else: #sets terminal states to zero
+                EV_Hit.append(np.array(0).reshape(1,1))
         
         if not EV_Hit:
             EV_Hit.append(-1)
