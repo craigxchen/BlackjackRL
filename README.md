@@ -18,18 +18,25 @@ VFA_TD0_Batch is VFA_TD0, but capable of learning in batches of arbirtrary size 
 
 ## Test Results:
 
-Using **1-hot encoding**, the neural net converges (VFA_TDv6). Also loosely converged when sampling instead of computing expected value for the TD update.
+Using **1-hot encoding**, the neural net converges (VFA_TD0). Also loosely converged when sampling instead of computing expected value for the TD update.
 
-Parameters: 512 neurons, ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000 and 500000, function initialized to zero
+Architecture: Hidden Layer - 512 neurons, ReLU; Output Layer - 1 neuron, Linear 
 
-Non-linearities: ReLU -- see results folder
+Parameters: ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000 and 500000, function initialized to zero
+
 
 
 Using **normalized 3-vector**, the neural net converges (VFA_TDv6). Also converged when sampling instead of computing expected value (500000 trials)
 
-Parameters: 512neurons, ALPHA = 100, GAMMA = 1, NUM_TRIALS = 100000 function initialized to zero 
+Architecture: Hidden Layer - 512 neurons, ReLU; Output Layer - 1 neuron, Linear 
 
-Non-linearities: ReLU -- see results folder
+Parameters: ALPHA = 100, GAMMA = 1, NUM_TRIALS = 100000 function initialized to zero 
+
+
+
+## Future Work:
+
+1) Rewrite VFA_Net using PyTorch/Tensorflow. (and update all dependencies accordingly)
 
 ## Authors
 
