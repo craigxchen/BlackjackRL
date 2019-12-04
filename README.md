@@ -3,6 +3,9 @@
 
 ## Getting Started
 
+You can simply clone/download the repository and run programs as-is. Below is a brief explanation of what is included:
+
+
 Tabular_QL is equipped with typical methods used in decaying epsilon-greey Q-learning. Consistently converges to optimal.
 
 Tabular_MC is similar, except it "learns" through the Monte Carlo algorithm.
