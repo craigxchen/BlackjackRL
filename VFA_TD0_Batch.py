@@ -16,12 +16,12 @@ nn_arq = [
 ALPHA = 100
 GAMMA = 1
 NUM_TRIALS = 100000
-BATCH_SIZE = 1
+BATCH_SIZE = 64
 
 def loss(target, prediction, alpha=1):
     return float((target-alpha*prediction)**2)
 
-model = NeuralNetwork(nn_arq, bias=True, double = "yes")   
+model = NeuralNetwork(nn_arq, bias=True, double = True)   
 env = CompleteBlackjackEnv()
 
 # %% 
