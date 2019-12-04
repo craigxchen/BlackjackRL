@@ -5,13 +5,7 @@ import pickle
 from collections import defaultdict
 from mpl_toolkits.mplot3d import Axes3D
 
-class MC_Prediction:
-    '''
-    Action Space = [0], or [1], 0 = stay, 1 = hit
-    Observation Space = tuple 32x11x2 -- 32 corresponds to # of possible player sums
-                                      -- 11 corresponds to # of card values (1 - 11)
-                                      -- 2 corresponds to Y/N usable Ace
-    '''
+class MCAgent:
     def __init__(self, environment, policy, gamma=1.0):
         self.gamma = gamma
         self.env = environment
@@ -20,12 +14,10 @@ class MC_Prediction:
         '''
         initialize q-table - defaultdict initializes an array with each new entry following the template of the input function
         initialize n-table - number of times we've been to a state and taken some action
-        initialize r-table - table of discounted total rewards at any state, action pair
         initialize v-table - max(Q(s,a))
         '''
         self.q = defaultdict(lambda: np.zeros(env.action_space.n))
         self.n = defaultdict(lambda: 0)
-        self.r = defaultdict(lambda: np.zeros(self.env.action_space.n))
         self.v = {}
     
     def update_q(self, recent_path):
@@ -38,7 +30,7 @@ class MC_Prediction:
         for idx, s in enumerate(states):
             first_occurence_idx = next(i for i,x in enumerate(recent_path) if x[0] == s)
             
-            G = sum([x[2]*(self.gamma**i) for i,x in enumerate(recent_path[first_occurence_idx:])])
+            G = sum([r*(self.gamma**i) for i,r in enumerate(rewards[first_occurence_idx:])])
             self.n[s] += 1
             
             alpha = max(1/(1+self.n[s])**0.85, 0.001)
@@ -75,7 +67,7 @@ class MC_Prediction:
                 state, reward, done, _ = self.env.step(int(action))
                 path.append([state, action, reward])
                 
-            print("Game: {}/{}".format(game, num_games))
+#            print("Game: {}/{}".format(game, num_games))
             for idx, state in enumerate(path, start = 1):
                 if output_details:
                     print("Your sum: {}, Dealer showed: {}, Usable Ace? {}".format(state[0][0], state[0][1], state[0][2]))
@@ -147,12 +139,12 @@ class MC_Prediction:
         return
     
 # %%
-with open("near_optimal", 'rb') as f:
+with open("input_policy", 'rb') as f:
     P_star = pickle.load(f)  
 
 env = gym.make("Blackjack-v0")
 num_trials = 500000
-model = MC_Prediction(env, P_star)
+model = MCAgent(env, P_star)
 
 for idx in range(1, num_trials+1):
     if idx % (num_trials/10) == 0:
@@ -162,7 +154,7 @@ for idx in range(1, num_trials+1):
     model.update_q(path)
     
 P_derived = model.get_policy()
-model.test(P_derived, 100000)
+model.test(P_derived, num_games=100000, output_details=False)
 
 Q = model.q
 V = dict((k,np.max(v)) for k, v in Q.items())

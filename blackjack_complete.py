@@ -4,7 +4,7 @@ Blackjack environment for reinforcement learning agent
 import numpy as np
 import random
 
-class CompleteBlackjackEnv:
+class Blackjack:
     def __init__(self):
         self.action_space = [0, 1] # hit = 1, stand = 0
         self.state_space = [(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]
