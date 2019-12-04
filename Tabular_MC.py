@@ -1,9 +1,8 @@
+import blackjack_plot_tools as bpt
 import numpy as np
-import matplotlib.pyplot as plt
 import gym
 import pickle
 from collections import defaultdict
-from mpl_toolkits.mplot3d import Axes3D
 
 class MCAgent:
     def __init__(self, environment, policy, gamma=1.0):
@@ -97,46 +96,7 @@ class MCAgent:
 
     def get_policy(self):
         return dict((k,np.argmax(v)) for k, v in self.q.items())
-        
-
-    # TODO: Alter "plot_v" to make it compatible with a DECORATOR that allows you to interchange between usable and unusable Ace
-    @staticmethod
-    def plot_v(V, usable_ace = False):
-        fig, ax = plt.subplots()
-        ax = Axes3D(fig)
-        
-        states = list(V.keys())
-        states_YESace = {}
-        states_NOTace = {}
-        for state in states:
-            if not state[2]:
-                states_NOTace[state] = V[state]
-            else: 
-                states_YESace[state] = V[state]
-        
-        if usable_ace == 1:
-            player_sum = [state[0] for state in states_YESace.keys()]
-            dealer_show = [state[1] for state in states_YESace.keys()]
-            scores = [val for val in states_YESace.values()]
-
-            ax.plot_trisurf(player_sum, dealer_show, scores, cmap="viridis", edgecolor="none")
-            ax.set_xlabel("Player's Sum")
-            ax.set_ylabel("Dealer's Show Card")
-            ax.set_zlabel("Perceived Value")
-            ax.set_title("Soft Sums")
-            ax.view_init(elev=40, azim=-100)
-        else:
-            player_sum = np.array([state[0] for state in states_NOTace.keys()])
-            dealer_show = np.array([state[1] for state in states_NOTace.keys()])
-            scores = np.array([val for val in states_NOTace.values()])
-
-            ax.plot_trisurf(player_sum, dealer_show, scores, cmap="viridis", edgecolor="none")
-            ax.set_xlabel("Player's Sum")
-            ax.set_ylabel("Dealer's Show Card")
-            ax.set_zlabel("Perceived Value")
-            ax.set_title("Hard Sums")
-            ax.view_init(elev=40, azim=-100)
-        return
+    
     
 # %%
 with open("input_policy", 'rb') as f:
@@ -159,8 +119,10 @@ model.test(P_derived, num_games=100000, output_details=False)
 Q = model.q
 V = dict((k,np.max(v)) for k, v in Q.items())
 
-model.plot_v(V)
-model.plot_v(V, True)
+bpt.plot_policy(P_derived)
+bpt.plot_policy(P_derived, True)
+bpt.plot_v(V)
+bpt.plot_v(V, True)
 
 # final win-rate is ~40%
     
