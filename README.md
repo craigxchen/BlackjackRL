@@ -36,6 +36,8 @@ Parameters: ALPHA = 100, GAMMA = 1, NUM_TRIALS = 100000 function initialized to 
 
 1) Rewrite VFA_Net using PyTorch/Tensorflow. (and update all dependencies accordingly)
 
+2) Change Tabular_MC policy from greedy to \epsilon-greedy
+
 ## Authors
 
 * **Craig Chen** - *Initial work* - [craigxchen](https://github.com/craigxchen)
