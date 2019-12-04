@@ -16,11 +16,12 @@ nn_arq = [
 ALPHA = 100
 GAMMA = 1
 NUM_TRIALS = 100000
+BATCH_SIZE = 1
 
 def loss(target, prediction, alpha=1):
-    return float(np.square(target-alpha*prediction))
+    return float((target-alpha*prediction)**2)
 
-model = NeuralNetwork(nn_arq, bias = True, double = True)   
+model = NeuralNetwork(nn_arq, bias=True, double = True, seed=1)   
 env = CompleteBlackjackEnv()
 
 # %% 
@@ -39,7 +40,6 @@ def process(state):
     ## one-hot (dim = 280,1)
 #    return np.array([int(state == k) for k in env.state_space]).reshape(len(env.state_space),1)
 
-# TODO fix 
 def get_policy(V):
     P = {}
     for state in V.keys():
@@ -48,14 +48,14 @@ def get_policy(V):
         
         fut_states, _ = env.future_states(state)
         for fs in fut_states:
-            if fs[0] <= 21:
+            if fs[0] <= 21: 
                 EV_Hit.append(model(process(fs)))
             else: #sets terminal states to zero
                 EV_Hit.append(np.array(0).reshape(1,1))
         
         if not EV_Hit:
-            EV_Hit.append(0)
-        
+            EV_Hit.append(-1)
+
         P[state] = (np.mean(EV_Hit) > EV_Stay)[0][0].astype(int)
     return P
 
@@ -157,7 +157,6 @@ def plot_policy(policy, usable_ace = False, save = True):
                         .format(NUM_TRIALS,ALPHA,"0.001/ALPHA",nn_arq[0]["output_dim"]), bbox_inches = 'tight')
     return
 
-# TODO change to scatter plot and add best-fit line
 def plot_loss(y):
     fig, ax = plt.subplots()
     label_fontsize = 18
@@ -174,54 +173,60 @@ def plot_loss(y):
     return
 
 # %% training
-    
-model.reset()
 with open("input_policy", 'rb') as f:
     P_star = pickle.load(f)    
 
-loss_history = []
-for i in range(NUM_TRIALS):
-    if (i+1)%(NUM_TRIALS/10) == 0:
-        print('trial {}/{}'.format(i+1,NUM_TRIALS))
-        
-    state = env.reset()
-    done = False
-    
-    while not done:
-        action = P_star[state]
-        next_state, reward, done = env.step(action)
-
-        if action == 1:
-            ## computing expected value
-            fut_vals = []
-            fut_states, _ = env.future_states(state)
-            for fs in fut_states:
-                if fs[0] > 21: #bust = terminal state, so v = 0
-                    fut_vals.append(np.array(reward).reshape(1,1))
-                else:
-                    fut_vals.append(reward + ALPHA*GAMMA*model(process(fs)))
+def train(**kwargs):
+    loss_history = []
+    for i in range(NUM_TRIALS):
+        if (i+1)%(NUM_TRIALS/10) == 0:
+            print('trial {}/{}'.format(i+1,NUM_TRIALS))
             
-            y = np.mean(fut_vals)
-            ## sampling
-#                y = reward + ALPHA*GAMMA*model(process(next_state))
-        else:
-            y = reward
+        state = env.reset()
+        done = False
         
-        # net_forward saves values needed for backpropagation
-        y_hat = model.net_forward(process(state))
+        grad_values = []
         
-        lr = 0.001
-        
-        loss_history.append(loss(y, y_hat, ALPHA))
-        model.net_backward(y, y_hat, ALPHA)
-        model.update_wb(lr)
-        
-        state = next_state   
+        for j in range(BATCH_SIZE):
+            while not done:
+                action = P_star[state]
+                next_state, reward, done = env.step(action)
     
+                if action == 1:
+                    ## compute expected value
+                    fut_vals = []
+                    fut_states, _ = env.future_states(state)
+                    for fs in fut_states:
+                        if fs[0] > 21: #bust = terminal state, so v = 0
+                            fut_vals.append(np.array(reward).reshape(1,1))
+                        else:
+                            fut_vals.append(reward + ALPHA*GAMMA*model(process(fs)))
+                    
+                    y = np.mean(fut_vals)
+                    
+                    ## sampling
+#                    y = reward + ALPHA*GAMMA*model(process(next_state))
+                else:
+                    y = np.array(reward).reshape(1,1)
+                
+                y_hat = model.net_forward(process(state))
+                
+                loss_history.append(loss(y, y_hat, ALPHA))
+                grad_values.append(model.net_backward(y, y_hat, ALPHA))
+                
+                state = next_state
+    
+        lr = 0.001
+        model.batch_update_wb(lr, grad_values)
+        
+    
+    V = dict((k,ALPHA*model(process(k)).item()) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
+    P_derived = get_policy(V)
+    
+    return P_derived, V, loss_history
 
-V = dict((k,model(process(k)).item()) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
-P_derived = get_policy(V)
-
+#model.reset_params()
+P_derived, V, loss_history = train()
 plot_loss(loss_history)
 plot_policy(P_derived, save=False)
 plot_policy(P_derived, True, save=False)
