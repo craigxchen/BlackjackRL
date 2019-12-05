@@ -22,6 +22,8 @@ class NeuralNetwork:
     
         if seed is not None:
             np.random.seed(seed)
+        
+        # loop through neural net
         for idx, layer in enumerate(self.nn_structure):
 
             layer_input_size = layer["input_dim"]
@@ -37,11 +39,11 @@ class NeuralNetwork:
             if self.double and idx == self.num_layers-1:
                 if layer_input_size%2 != 0:
                     raise Exception('Odd number of layers in the last layer, must be even to use doubling trick')
-                # double every hidden layer to ensure initialization to 0
-                if self.initVarLast != 0:
-                    for i in range(layer_output_size):
-                        halfArray = np.random.normal(0, self.initVarLast/layer_input_size, int(layer_input_size/2))
-                        self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
+                    
+                # TODO: change so it doubles every hidden layer to ensure initialization to 0 (?)
+                for i in range(layer_output_size):
+                    halfArray = np.random.normal(0, self.initVarLast/layer_input_size, int(layer_input_size/2))
+                    self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
                         
             # sets weights of last layer to 0
             elif self.zero  and idx == self.num_layers-1:
