@@ -6,7 +6,7 @@ Install the prerequisite libraries: `pip install numpy scipy matplotlib`
 
 You can simply clone/download the repository and run programs as-is. Below is a brief explanation of what is included:
 
-# Blackjack
+### Blackjack
 
 Tabular_QL is equipped with typical methods used in decaying epsilon-greey Q-learning. Consistently converges to optimal.
 
@@ -19,13 +19,13 @@ rapid flexibility in customization.
 
 VFA_TD0 is functional; however, can be further optimized. 
 
-# LQR
+### LQR
 
 TODO WRITE HERE
 
 ## Test Results:
 
-# Blackjack
+### Blackjack
 
 Using **1-hot encoding**, the neural net converges (VFA_TD0). Also loosely converged when sampling instead of computing expected value for the TD update.
 
