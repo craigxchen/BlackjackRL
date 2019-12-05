@@ -101,3 +101,21 @@ class control:
         plt.grid(True)
         plt.show()
         return
+
+    def plot_V(model):
+        fig, ax = plt.subplots()
+        colors = [ '#B53737'] # red
+        label_fontsize = 18
+
+        x = np.arange(-3,3,0.1)
+
+        # change to be a loop in the future that supports N colors
+        ax.plot(x,[model(np.array(x1).reshape(1,1))[0][0] for x1 in x],color=colors[0],label='Loss')
+
+        ax.set_xlabel('x',fontsize=label_fontsize)
+        ax.set_ylabel('y',fontsize=label_fontsize)
+        plt.legend(fontsize=label_fontsize)
+
+        plt.grid(True)
+        plt.show()
+        return
