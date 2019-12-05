@@ -1,5 +1,5 @@
 from VFA_Net import NeuralNetwork
-from blackjack_complete_TEST import CompleteBlackjackEnv
+from blackjack_complete import Blackjack
 from matplotlib import colors
 from matplotlib.ticker import AutoMinorLocator
 from mpl_toolkits.mplot3d import Axes3D
@@ -41,7 +41,7 @@ def loss(target, prediction, alpha=1):
     return float((1/(alpha**2))*np.square(target-alpha*prediction))
 
 model = NeuralNetwork(nn_arq, bias = True, double = "yes")
-env = CompleteBlackjackEnv()
+env = Blackjack()
 
 # %%
 
