@@ -3,37 +3,43 @@
 
 ## Getting Started
 
-QL_Agent is equipped with typical methods used in decaying epsilon-greey Q-learning. Consistently converges to optimal.
+You can simply clone/download the repository and run programs as-is. Below is a brief explanation of what is included:
 
-Blackjack_Complete is a customizable blackjack environment for a learning agent to interact with
+
+Tabular_QL is equipped with typical methods used in decaying epsilon-greey Q-learning. Consistently converges to optimal.
+
+Tabular_MC is similar, except it "learns" through the Monte Carlo algorithm.
+
+Blackjack_Complete is a customizable blackjack environment for a learning agent to interact with.
 
 VFA_Net is a sequential neural net written using primarily Numpy. This is used in place of PyTorch or Tensorflow due to the need for 
 rapid flexibility in customization.
 
-VFA_TD is a work in progress.
-
-## Notes
-
-Up-to-date versions:
-
-VFA_TDv6 is functional
-
-Blackjack_Complete_TEST is the same as the original version; however, it includes a few extra functions to simplify life in the TD learning model.
+VFA_TD0 is functional; however, can be further optimized. 
 
 ## Test Results:
 
-Using **1-hot encoding**, the neural net converges in both VFA_TDv6 and v7. Also loosely converged when sampling instead of computing expected value for the TD update.
+Using **1-hot encoding**, the neural net converges (VFA_TD0). Also loosely converged when sampling instead of computing expected value for the TD update.
 
-Parameters: 512 neurons, ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000 and 500000, function initialized to zero
+Architecture: Hidden Layer - 512 neurons, ReLU; Output Layer - 1 neuron, Linear 
 
-Non-linearities: ReLU -- see results folder
+Parameters: ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000 and 500000, function initialized to zero
 
 
-Using **normalized 3-vector**, the neural net sometimes converges.
 
-Parameters: 2048 neurons, ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000,500000,1000000 function initialized to zero 
+Using **normalized 3-vector**, the neural net converges (VFA_TDv6). Also converged when sampling instead of computing expected value (500000 trials)
 
-Non-linearities: ReLU
+Architecture: Hidden Layer - 512 neurons, ReLU; Output Layer - 1 neuron, Linear 
+
+Parameters: ALPHA = 100, GAMMA = 1, NUM_TRIALS = 100000 function initialized to zero 
+
+
+
+## Future Work:
+
+1) Rewrite VFA_Net using PyTorch/Tensorflow. (and update all dependencies accordingly)
+
+2) Change Tabular_MC policy from greedy to \epsilon-greedy
 
 ## Authors
 
