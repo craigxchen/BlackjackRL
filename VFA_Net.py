@@ -2,7 +2,7 @@ import numpy as np
 from collections import defaultdict
 
 class NeuralNetwork:
-    def __init__(self, nn_structure, bias=True, double=False, seed=None, initVar = 1,initVarLast = 1):
+    def __init__(self, nn_structure, bias=True, double=False, seed=None, initVar = 1, initVarLast = 1):
         self.nn_structure = nn_structure
         self.num_layers = len(nn_structure)
         self.parameters = {}
