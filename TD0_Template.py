@@ -83,7 +83,7 @@ def train(**kwargs):
         MODEL.batch_update_wb(lr, grad_values)
         
     
-    V = dict((k,ALPHA*MODEL(process(k)).item()) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
+    V = dict((k,ALPHA*MODEL(process(k)).item()) for k in ENV.state_space)
     
     return V, loss_history
 
