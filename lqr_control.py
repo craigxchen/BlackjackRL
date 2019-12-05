@@ -2,6 +2,23 @@ import numpy as np
 import scipy.linalg
 import matplotlib.pyplot as plt
 
+def trueloss(A,B,Q,R,K,xs,T,gamma):
+    """
+    !!!!!not sure that this works in hiher dimension!!!!
+    input:
+        - all the matrices
+        - xs is a np.array of shape (l,1) of initial conditions
+        - T is the number of steps
+    output:
+        - computes the sum of discounted rewards starting from the initial conditions stored in x0s up to time T
+    """
+    V = np.zeros(xs.size).reshape(xs.shape)
+    for j in range(T):
+        us = -K*xs
+        V += (gamma**j)*(xs*Q*xs + us*R*us)
+        xs = A*xs + B*us
+    return V
+
 class control:
     def lqr(A,B,Q,R):
         '''
@@ -48,6 +65,24 @@ class control:
             x = np.hstack((x, x_prime))
             u = np.hstack((u, u_t))
         return x, u
+
+    def trueloss2(A,B,Q,R,K,xs,T):
+        """
+        !!!!!not sure that this works in hiher dimension!!!!
+        input:
+            - all the matrices
+            - xs is a np.array of shape (l,1) of initial conditions
+            - T is the number of steps
+        output:
+            - computes the sum of discounted rewards starting from the initial conditions stored in x0s up to time T
+        """
+        V = np.zeros(x.size).reshape(x.shape)
+        for j in range(T):
+            us = -K*xs
+            V += (gamma**j)*(xs*Q*xs + us*R*us)
+            xs = A*xs + B*us
+        return V
+
 
     def plot_paths(x1,x2,ylabel,R1,R2):
         fig, ax = plt.subplots()
@@ -102,15 +137,19 @@ class control:
         plt.show()
         return
 
-    def plot_V(model):
+    def plot_V(model,A,B,Q,R,K,Tm,gamma,alpha):
         fig, ax = plt.subplots()
-        colors = [ '#B53737'] # red
+        colors = [ '#B53737', '#2D328F' ] # red
         label_fontsize = 18
 
         x = np.arange(-3,3,0.1)
 
+
+
         # change to be a loop in the future that supports N colors
-        ax.plot(x,[model(np.array(x1).reshape(1,1))[0][0] for x1 in x],color=colors[0],label='Loss')
+        ax.plot(x,[alpha*model(np.array(x1).reshape(1,1))[0][0] for x1 in x],color=colors[0],label='Approximated Loss')
+        xs = x.reshape(x.size,1)
+        ax.plot(x,trueloss(A,B,Q,R,K,xs,Tm,gamma).reshape(x.size),color=colors[1],label='Real Loss')
 
         ax.set_xlabel('x',fontsize=label_fontsize)
         ax.set_ylabel('y',fontsize=label_fontsize)
