@@ -2,24 +2,19 @@ import numpy as np
 from collections import defaultdict
 
 class NeuralNetwork:
-    def __init__(self, nn_structure, bias=True, double=False, zero=False, seed=None, initVar = 1, initVarLast = 1):
+    def __init__(self, nn_structure, bias=True, double=False, seed=None, initVar = 1,initVarLast = 1):
         self.nn_structure = nn_structure
         self.num_layers = len(nn_structure)
         self.parameters = {}
         self.bias = bias
         self.double = double
-        self.zero = zero
-        # Variance of all layers' parameters minus last
         self.initVar = initVar
-        # Variance of last layer parameters
         self.initVarLast = initVarLast
 
         # intializes dictionaries needed to store values for backpropagation
         self.memory = {}
         self.grad_values = {}
-        
-        # TODO: add if statement to catch when double and zero are both true
-    
+
         if seed is not None:
             np.random.seed(seed)
         for idx, layer in enumerate(self.nn_structure):
@@ -32,20 +27,18 @@ class NeuralNetwork:
             else:
                 self.parameters['b_' + str(idx)] = np.zeros((layer_output_size,1))
 
-            self.parameters['w_' + str(idx)] = np.random.normal(0, self.initVar/layer_input_size, (layer_output_size, layer_input_size))
-            
+            self.parameters['w_' + str(idx)] = np.random.normal(0, self.initVar/layer_input_size**2, (layer_output_size, layer_input_size))
+
             if self.double and idx == self.num_layers-1:
                 if layer_input_size%2 != 0:
                     raise Exception('Odd number of layers in the last layer, must be even to use doubling trick')
-                # double every hidden layer to ensure initialization to 0
-                if self.initVarLast != 0:
+                # sets weights of last layer to 0
+                if initVarLast != 0:
                     for i in range(layer_output_size):
-                        halfArray = np.random.normal(0, self.initVarLast/layer_input_size, int(layer_input_size/2))
+                        halfArray = np.random.normal(0, self.initVarLast/layer_input_size**2, int(layer_input_size/2))
                         self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
-                        
-            # sets weights of last layer to 0
-            elif self.zero  and idx == self.num_layers-1:
-                self.parameters['w_' + str(idx)] = np.zeros((layer_output_size,layer_input_size))
+                else:
+                    self.parameters['w_' + str(idx)] = np.zeros((layer_output_size,layer_input_size))
 
 
     def __call__(self, a0):
@@ -60,9 +53,11 @@ class NeuralNetwork:
         return a_n
 
     def layer_activation(self, a_prev, w, b, activation = 'relu'):
+        "inputs: a_prev nx1 vector, w nxm matrix, b 1xm vector "
         # function computes the process that occurs in a single layer
         # returns the activation value and the z value, both are needed for the gradient
-        z = np.matmul(w,a_prev) + b
+
+        z = np.matmul(w,a_prev) +b
         if activation == 'none':
             return z, z
         elif activation == 'relu':
@@ -78,12 +73,13 @@ class NeuralNetwork:
         else:
             raise Exception('activation function currently not supported')
 
-    def net_forward(self, a0):
+    def net_forward(self, a0):#
         self.input_batch = a0
         a_prev = a0
         for idx, layer in enumerate(self.nn_structure):
             w_n = self.parameters['w_' + str(idx)]
             b_n = self.parameters['b_' + str(idx)]
+
 
             a_n, z_n = self.layer_activation(a_prev, w_n, b_n, layer['activation'])
             a_prev = a_n
@@ -109,6 +105,7 @@ class NeuralNetwork:
             raise Exception('activation function currently not supported')
 
         dA_prev = np.matmul(w_n.T, dZ)
+        #print("a:_____"+str(a_prev))
         dW = np.matmul(dZ, a_prev.T)
         if self.bias:
             dB = dZ
@@ -117,11 +114,12 @@ class NeuralNetwork:
 
         return dA_prev, dW, dB
 
-    def net_backward(self, targets, predictions, alpha=1):
+    def net_backward(self, targets, predictions, alpha=1): #what are the inputs here?
         # derivative of cost w.r.t. final activation (1/alpha^2 MSE)
         dA = -(1/alpha)*(targets - alpha*predictions)
         for idx, layer in reversed(list(enumerate(self.nn_structure))):
             if idx == 0:
+
                 a_prev = self.input_batch
             else:
                 a_prev = self.memory['a_' + str(idx - 1)]
@@ -146,6 +144,8 @@ class NeuralNetwork:
 
     def batch_update_wb(self, step_size, grad_values):
         temp = defaultdict(lambda: [])
+        print("------------------------------\n")
+
         for i in range(len(grad_values)):
             for idx, _ in enumerate(self.nn_structure):
                 temp['dW_'+str(idx)].append(grad_values[i]['dW_'+str(idx)])
@@ -180,15 +180,15 @@ class NeuralNetwork:
             else:
                 self.parameters['b_' + str(idx)] = np.zeros((layer_output_size,1))
 
-            self.parameters['w_' + str(idx)] = np.random.normal(0, self.initVar/layer_input_size, (layer_output_size, layer_input_size))
+            self.parameters['w_' + str(idx)] = np.random.normal(0, self.initVar/layer_input_size**2, (layer_output_size, layer_input_size))
 
             if self.double and idx == self.num_layers-1:
                 if layer_input_size%2 != 0:
                     raise Exception('Odd number of layers in the last layer, must be even to use doubling trick')
                 # sets weights of last layer to 0
-                if self.initVarLast != 0:
+                if initVarLast != 0:
                     for i in range(layer_output_size):
-                        halfArray = np.random.normal(0, self.initVarLast/layer_input_size, int(layer_input_size/2))
+                        halfArray = np.random.normal(0, self.initVarLast/layer_input_size**2, int(layer_input_size/2))
                         self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
                 else:
                     self.parameters['w_' + str(idx)] = np.zeros((layer_output_size,layer_input_size))
