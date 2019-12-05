@@ -1,31 +1,10 @@
-from network import NeuralNetwork
-from matplotlib import colors
-from matplotlib.ticker import AutoMinorLocator
-from mpl_toolkits.mplot3d import Axes3D
+import sys, os
+# access to files one directory up
+sys.path.append(os.path.abspath(os.path.join("..")))
+
+from VFA_Net import NeuralNetwork
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import pickle
 import numpy as np
-
-# try last-layer zeros or doubling
-# lowering step size
-# increasing alpha
-# try batch update
-
-"""
-test results:
-
-    using ALPHA = 1000, GAMMA = 1,
-    NUM_TRIALS = 100000 and 500000
-    512 neurons in hidden layer
-
-    function initialized to zero
-
-    converges when:
-        1-hot encoding and relu, leakyRelu
-        normalized vector encoding and _
-"""
-
 
 nn_arq = [
     {"input_dim": 1, "output_dim": 64, "activation": "relu"},
@@ -40,13 +19,13 @@ TMAX = 20000
 AA = 0.7
 BB = 0.3
 
-def fstar(x):
+def f_star(x):
     return AA * x + BB
 
 def loss(target, prediction, alpha=1):
     return float((1/(alpha**2))*np.square(target-alpha*prediction))
 
-model = NeuralNetwork(nn_arq, bias = True, double = "yes", initVar = 1, initVarLast = 1)
+model = NeuralNetwork(nn_arq, bias=True, double=True, initVar=1, initVarLast=1)
 
 
 # %%
@@ -55,7 +34,7 @@ model = NeuralNetwork(nn_arq, bias = True, double = "yes", initVar = 1, initVarL
 
 def sample_train(nsample):
     xtrain = np.random.randn(nsample)
-    return xtrain, fstar(xtrain) #xtrain, ytrain
+    return xtrain, f_star(xtrain) #xtrain, ytrain
 
 
 def plot_loss(y):
@@ -77,9 +56,9 @@ def plot_test(xtest):# xtest is a np.array
     fig, ax = plt.subplots()
     label_fontsize = 18
 
-    t = np.arange(0,len(y))
+    #t = np.arange(0,len(y))
     ax.plot(list(xtest),[model.net_forward([x]) for x in xtest])
-    ax.plot(list(xtest),list(fstar(xtest)))
+    ax.plot(list(xtest),list(f_star(xtest)))
     #ax.set_yscale('log')
     ax.set_xlabel('x',fontsize=label_fontsize)
     ax.set_ylabel('yhat',fontsize=label_fontsize)
@@ -101,7 +80,7 @@ def train(xtrain, **kwargs):
                 print('training samples {}/{}'.format(i+1,xtrain.shape[0]))
 
             y_hat = model.net_forward(np.array([[xtrain[i]]]))
-            y = np.array([[fstar(xtrain[i])]])
+            y = np.array([[f_star(xtrain[i])]])
 
             lr = 0.001
 
@@ -109,6 +88,7 @@ def train(xtrain, **kwargs):
             #model.net_backward(y, y_hat, ALPHA)
 
             grad_values[i] = model.net_backward(y, y_hat[0], ALPHA)
+            
         model.batch_update_wb(lr,grad_values)
         loss_history.append(losstemp/xtrain.shape[0])
 
