@@ -1,3 +1,7 @@
+import sys, os
+# access to files one directory up
+sys.path.append(os.path.abspath(os.path.join("..")))
+
 from VFA_Net import NeuralNetwork
 from blackjack_complete import Blackjack
 import blackjack_plot_tools as bpt
