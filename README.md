@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-Install the prerequisite libraries: `pip install numpy scipy matplotlib pickle
+Install the prerequisite libraries: `pip install numpy scipy matplotlib pickle`
 
 You can simply clone/download the repository and run programs as-is. Below is a brief explanation of what is included:
 
