@@ -36,6 +36,12 @@ ALPHA = 1
 GAMMA = 1
 NUM_TRIALS = 500000
 TMAX = 20000
+#slope and offset of function to be learnied
+AA = 0.7
+BB = 0.3
+
+def fstar(x):
+    return AA * x + BB
 
 def loss(target, prediction, alpha=1):
     return float((1/(alpha**2))*np.square(target-alpha*prediction))
@@ -49,7 +55,7 @@ model = NeuralNetwork(nn_arq, bias = True, double = "yes", initVar = 1, initVarL
 
 def sample_train(nsample):
     xtrain = np.random.randn(nsample)
-    return xtrain, 0.7*xtrain + 1.2 #xtrain, ytrain
+    return xtrain, fstar(xtrain) #xtrain, ytrain
 
 
 def plot_loss(y):
@@ -67,13 +73,13 @@ def plot_loss(y):
     plt.show()
     return
 
-def plot_test(xtest):
+def plot_test(xtest):# xtest is a np.array
     fig, ax = plt.subplots()
     label_fontsize = 18
 
     t = np.arange(0,len(y))
-    ax.plot(xtest,[model.net_forward(x) for x in xtest])
-    ax.plot(xtest,[0.7*x+1.2 for x in xtest])
+    ax.plot(list(xtest),[model.net_forward([x]) for x in xtest])
+    ax.plot(list(xtest),list(fstar(xtest)))
     #ax.set_yscale('log')
     ax.set_xlabel('x',fontsize=label_fontsize)
     ax.set_ylabel('yhat',fontsize=label_fontsize)
@@ -90,20 +96,21 @@ def train(xtrain, **kwargs):
     for j in range(TMAX):
         grad_values = {}
         losstemp = 0
-        for i in range(xtrain.shape):
-            if (i+1)%(xtrain.shape/10) == 0:
-                print('trial {}/{}'.format(i+1,xtrain.shape))
+        for i in range(xtrain.shape[0]):
+            if (i+1)%(xtrain.shape[0]/10) == 0:
+                print('training samples {}/{}'.format(i+1,xtrain.shape[0]))
 
-            y_hat = model.net_forward(process(state))
+            y_hat = model.net_forward(np.array([[xtrain[i]]]))
+            y = np.array([[fstar(xtrain[i])]])
 
             lr = 0.001
 
             losstemp += loss(y, y_hat, ALPHA)
-            model.net_backward(y, y_hat, ALPHA)
+            #model.net_backward(y, y_hat, ALPHA)
 
-            grad_values[str(i)] = model.net_backward(y, y_hat, ALPHA)
+            grad_values[i] = model.net_backward(y, y_hat[0], ALPHA)
         model.batch_update_wb(lr,grad_values)
-        loss_history.append(losstemp/xtrain.shape)
+        loss_history.append(losstemp/xtrain.shape[0])
 
     return loss_history
 
@@ -111,4 +118,4 @@ def train(xtrain, **kwargs):
 xtrain,ytrain = sample_train(500)
 loss_history = train(xtrain)
 plot_loss(loss_history)
-plot_test(list(np.random.randn(50)))
+plot_test(np.random.randn(50))

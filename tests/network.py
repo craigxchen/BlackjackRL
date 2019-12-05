@@ -53,9 +53,11 @@ class NeuralNetwork:
         return a_n
 
     def layer_activation(self, a_prev, w, b, activation = 'relu'):
+        "inputs: a_prev nx1 vector, w nxm matrix, b 1xm vector "
         # function computes the process that occurs in a single layer
         # returns the activation value and the z value, both are needed for the gradient
-        z = np.matmul(w,a_prev) + b
+
+        z = np.matmul(w,a_prev) +b
         if activation == 'none':
             return z, z
         elif activation == 'relu':
@@ -71,12 +73,13 @@ class NeuralNetwork:
         else:
             raise Exception('activation function currently not supported')
 
-    def net_forward(self, a0):
+    def net_forward(self, a0):#
         self.input_batch = a0
         a_prev = a0
         for idx, layer in enumerate(self.nn_structure):
             w_n = self.parameters['w_' + str(idx)]
             b_n = self.parameters['b_' + str(idx)]
+
 
             a_n, z_n = self.layer_activation(a_prev, w_n, b_n, layer['activation'])
             a_prev = a_n
@@ -102,6 +105,7 @@ class NeuralNetwork:
             raise Exception('activation function currently not supported')
 
         dA_prev = np.matmul(w_n.T, dZ)
+        #print("a:_____"+str(a_prev))
         dW = np.matmul(dZ, a_prev.T)
         if self.bias:
             dB = dZ
@@ -110,11 +114,12 @@ class NeuralNetwork:
 
         return dA_prev, dW, dB
 
-    def net_backward(self, targets, predictions, alpha=1):
+    def net_backward(self, targets, predictions, alpha=1): #what are the inputs here?
         # derivative of cost w.r.t. final activation (1/alpha^2 MSE)
         dA = -(1/alpha)*(targets - alpha*predictions)
         for idx, layer in reversed(list(enumerate(self.nn_structure))):
             if idx == 0:
+
                 a_prev = self.input_batch
             else:
                 a_prev = self.memory['a_' + str(idx - 1)]
@@ -139,6 +144,8 @@ class NeuralNetwork:
 
     def batch_update_wb(self, step_size, grad_values):
         temp = defaultdict(lambda: [])
+        print("------------------------------\n")
+
         for i in range(len(grad_values)):
             for idx, _ in enumerate(self.nn_structure):
                 temp['dW_'+str(idx)].append(grad_values[i]['dW_'+str(idx)])
