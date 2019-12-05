@@ -110,7 +110,7 @@ class control:
         x = np.arange(-3,3,0.1)
 
         # change to be a loop in the future that supports N colors
-        ax.plot(x,[model(np.array(x1).reshape(1,1))[0][0] for x1 in x],color=colors[0],label='Loss')
+        ax.plot(x,[model(np.array(x1).reshape(1,1))[0][0] for x1 in x],color=colors[0],label='Learned Function')
 
         ax.set_xlabel('x',fontsize=label_fontsize)
         ax.set_ylabel('y',fontsize=label_fontsize)
