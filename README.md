@@ -1,10 +1,12 @@
-# BlackjackRL
-
+# Reinforcement Learning Value Function Approximation
 
 ## Getting Started
 
+Install the prerequisite libraries: `pip install numpy scipy matplotlib`
+
 You can simply clone/download the repository and run programs as-is. Below is a brief explanation of what is included:
 
+# Blackjack
 
 Tabular_QL is equipped with typical methods used in decaying epsilon-greey Q-learning. Consistently converges to optimal.
 
@@ -17,7 +19,13 @@ rapid flexibility in customization.
 
 VFA_TD0 is functional; however, can be further optimized. 
 
+# LQR
+
+TODO WRITE HERE
+
 ## Test Results:
+
+# Blackjack
 
 Using **1-hot encoding**, the neural net converges (VFA_TD0). Also loosely converged when sampling instead of computing expected value for the TD update.
 
@@ -37,9 +45,8 @@ Parameters: ALPHA = 100, GAMMA = 1, NUM_TRIALS = 100000 function initialized to 
 
 ## Future Work:
 
-1) Rewrite VFA_Net using PyTorch/Tensorflow. (and update all dependencies accordingly)
-
-2) Change Tabular_MC policy from greedy to \epsilon-greedy
+1. Rewrite VFA_Net using PyTorch/Tensorflow. (and update all dependencies accordingly)
+2. Change Tabular_MC policy from greedy to \epsilon-greedy
 
 ## Authors
 
