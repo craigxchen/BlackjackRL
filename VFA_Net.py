@@ -32,12 +32,12 @@ class NeuralNetwork:
             if self.double and idx == self.num_layers-1:
                 if layer_input_size%2 != 0:
                     raise Exception('Odd number of layers in the last layer, must be even to use doubling trick')
-                # sets weights of last layer to 0
+                # double the last layer
                 if self.initVarLast != 0:
                     for i in range(layer_output_size):
                         halfArray = np.random.normal(0, self.initVarLast/layer_input_size, int(layer_input_size/2))
                         self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
-                else:
+                else: # sets weights of last layer to 0
                     self.parameters['w_' + str(idx)] = np.zeros((layer_output_size,layer_input_size))
 
 
