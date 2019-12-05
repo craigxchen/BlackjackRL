@@ -18,7 +18,7 @@ BATCH_SIZE = 1
 def loss(target, prediction, alpha=1):
     return float((target-alpha*prediction)**2)
 
-model = NeuralNetwork(nn_arq, bias=True, double = True, seed=1)
+model = NeuralNetwork(nn_arq, bias=True, double = True, seed=1, initVar = 1, initVarLast = 0)
    
 env = Blackjack()
 
