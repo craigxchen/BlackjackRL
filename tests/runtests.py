@@ -49,8 +49,7 @@ def loss(target, prediction, alpha=1):
 model = NeuralNetwork(nn_arq, bias = True, double = "yes", initVar = 1, initVarLast = 1)
 
 
-# %%
-
+#
 
 
 def sample_train(nsample):
