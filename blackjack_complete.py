@@ -4,7 +4,7 @@ Blackjack environment for reinforcement learning agent
 import numpy as np
 import random
 
-class CompleteBlackjackEnv:
+class Blackjack:
     def __init__(self):
         self.action_space = [0, 1] # hit = 1, stand = 0
         self.state_space = [(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]
@@ -42,6 +42,18 @@ class CompleteBlackjackEnv:
         while self.sum_hand(self.dealer) < 17:
             self.dealer.append(self.deal_card())
         return
+    
+    def future_states(self, state):
+        curr_hand = self.player
+        new_hands = [curr_hand + [card] for card in list(range(1,11)) + 3*[10]]
+        states = [(self.sum_hand(x), state[1], state[2]) for x in new_hands]
+        rewards = []
+        for s in states:
+            if self.is_bust(self.player):
+                rewards.append(-1)
+            else:
+                rewards.append(0)
+        return states, rewards
        
     # all methods below were taken from OpenAI Gym's blackjack environment
     # ALL credit for code below goes to OpenAI 
