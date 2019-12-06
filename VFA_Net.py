@@ -51,6 +51,7 @@ class NeuralNetwork:
 
 
     def __call__(self, a0):
+        # TODO: add assertion to confirm shape of input
         a_prev = a0
         for idx, layer in enumerate(self.nn_structure):
             w_n = self.parameters['w_' + str(idx)]
