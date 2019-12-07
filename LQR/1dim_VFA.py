@@ -78,8 +78,8 @@ print("y_0 =     "+str(model(np.array(1).reshape(1,1))))
 
 loss_hist = train(K_1)
 
-control.plot_loss(loss_hist)
+#control.plot_loss(loss_hist)
 
-control.plot_V(model)
+control.plot_V(model,A,B,Q,R1,K_1,30,GAMMA,ALPHA)
 
 control.plot_paths(x_1[0],x_2[0],'Position',R1,R2)

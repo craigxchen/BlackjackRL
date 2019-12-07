@@ -28,11 +28,12 @@ def loss(target, prediction, alpha=1):
 
 model = NeuralNetwork(nn_arq, bias=True, double=True, initVar=1, initVarLast=1)
 
-# %%
 
 # perhaps this might make things easier
+#AA: Nice, thanks!
 def process(x):
     return np.array(x).reshape(1,1)
+
 
 def sample_train(nsample):
     xtrain = np.random.randn(nsample).reshape(nsample,1)
@@ -75,7 +76,7 @@ def comparison(low=-1,high=1):
     xtest = np.linspace(low,high,1000)
     y_hat = np.array([model(process(x)).item() for x in xtest])
     y = np.array([f_star(x) for x in xtest])
-    
+
     fig, ax = plt.subplots()
     label_fontsize = 18
 
@@ -98,7 +99,7 @@ def train(xtrain, epochs=10, **kwargs):
     for j in range(epochs):
         if (j+1)%(epochs/10) == 0:
             print('epoch: {}/{}'.format(j+1,epochs))
-            
+
 #        grad_values = {}
         for i in range(NUM_SAMPLES):
 #            if (i+1)%(xtrain.shape[0]/10) == 0:
@@ -107,15 +108,15 @@ def train(xtrain, epochs=10, **kwargs):
 
                 y_hat = model.net_forward(process(xtrain[i]))
                 y = np.array(f_star(xtrain[i])).reshape(1,1)
-    
+
                 lr = 0.001
-    
+
                 loss_history.append(loss(y, y_hat, ALPHA))
                 model.net_backward(y, y_hat, ALPHA)
                 model.update_wb(lr)
-    
+
 #                grad_values[i] = model.net_backward(y, y_hat, ALPHA)
-            
+
 #            model.batch_update_wb(lr,grad_values)
 
     return loss_history
