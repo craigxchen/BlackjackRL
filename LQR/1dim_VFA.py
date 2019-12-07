@@ -32,8 +32,8 @@ GAMMA = 0.9
 K_1, _, _ = control.dlqr(A,B,Q,R1)
 x_1, u_1 = control.simulate_discrete(A,B,K_1,x0,u0,T)
 
-K_2, _, _ = control.dlqr(A,B,Q,R2)
-x_2, u_2 = control.simulate_discrete(A,B,K_2,x0,u0,T)
+#K_2, _, _ = control.dlqr(A,B,Q,R2)
+#x_2, u_2 = control.simulate_discrete(A,B,K_2,x0,u0,T)
 
 def loss(target, prediction, alpha=1):
     return float((1/(alpha**2))*np.square(target-alpha*prediction))
@@ -80,6 +80,6 @@ loss_hist = train(K_1)
 
 #control.plot_loss(loss_hist)
 
-control.plot_V(model,A,B,Q,R1,K_1,30,GAMMA,ALPHA)
+control.plot_V(model,A,B,Q,R1,K_1,T,GAMMA,ALPHA)
 
-control.plot_paths(x_1[0],x_2[0],'Position',R1,R2)
+#control.plot_paths(x_1[0],x_2[0],'Position',R1,R2)

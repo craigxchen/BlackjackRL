@@ -141,11 +141,11 @@ def plot_V(model,A,B,Q,R,K,Tm,gamma,alpha):
     colors = [ '#B53737', '#2D328F' ] # red
     label_fontsize = 18
 
-    x = np.linspace(-3,3,0.1)
+    x = np.arange(-3,3,0.1)
 
-    ax.plot(x,[alpha*model(np.array(x1).reshape(1,1)).item() for x1 in x],color=colors[0],label='Approximated Loss')
+    ax.plot(x,[alpha*model(np.array(x1).reshape(1,1)).item() for x1 in x],color=colors[0],label='Approx. Loss Function')
     xs = x.reshape(x.size,1)
-    ax.plot(x,trueloss(A,B,Q,R,K,xs,Tm,gamma).reshape(x.size),color=colors[1],label='Real Loss')
+    ax.plot(x,trueloss(A,B,Q,R,K,xs,Tm,gamma).reshape(x.size),color=colors[1],label='Real Loss Function')
 
 
     ax.set_xlabel('x',fontsize=label_fontsize)
