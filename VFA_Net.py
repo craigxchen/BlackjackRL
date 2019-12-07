@@ -2,21 +2,28 @@ import numpy as np
 from collections import defaultdict
 
 class NeuralNetwork:
-    def __init__(self, nn_structure, bias=True, double=False, seed=None, initVar = 1, initVarLast = 1):
+    def __init__(self, nn_structure, bias=True, double=False, zero=False, seed=None, initVar = 1, initVarLast = 1):
         self.nn_structure = nn_structure
         self.num_layers = len(nn_structure)
         self.parameters = {}
         self.bias = bias
         self.double = double
+        self.zero = zero
+        # Variance of all layers' parameters minus last
         self.initVar = initVar
+        # Variance of last layer parameters
         self.initVarLast = initVarLast
 
         # intializes dictionaries needed to store values for backpropagation
         self.memory = {}
         self.grad_values = {}
-
+        
+        # TODO: add if statement to catch when double and zero are both true
+    
         if seed is not None:
             np.random.seed(seed)
+        
+        # loop through neural net
         for idx, layer in enumerate(self.nn_structure):
 
             layer_input_size = layer["input_dim"]
@@ -27,21 +34,24 @@ class NeuralNetwork:
             else:
                 self.parameters['b_' + str(idx)] = np.zeros((layer_output_size,1))
 
-            self.parameters['w_' + str(idx)] = np.random.normal(0, self.initVar/layer_input_size, (layer_output_size, layer_input_size))
-
+            self.parameters['w_' + str(idx)] = np.random.normal(0, self.initVar, (layer_output_size, layer_input_size))
+            
             if self.double and idx == self.num_layers-1:
                 if layer_input_size%2 != 0:
                     raise Exception('Odd number of layers in the last layer, must be even to use doubling trick')
-                # sets weights of last layer to 0
-                if initVarLast != 0:
-                    for i in range(layer_output_size):
-                        halfArray = np.random.normal(0, self.initVarLast/layer_input_size, int(layer_input_size/2))
-                        self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
-                else:
-                    self.parameters['w_' + str(idx)] = np.zeros((layer_output_size,layer_input_size))
+                    
+                # TODO: change so it doubles every hidden layer to ensure initialization to 0 (?)
+                for i in range(layer_output_size):
+                    halfArray = np.random.normal(0, self.initVarLast/layer_input_size, int(layer_input_size/2))
+                    self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
+                        
+            # sets weights of last layer to 0
+            elif self.zero  and idx == self.num_layers-1:
+                self.parameters['w_' + str(idx)] = np.zeros((layer_output_size,layer_input_size))
 
 
     def __call__(self, a0):
+        # TODO: add assertion to confirm shape of input
         a_prev = a0
         for idx, layer in enumerate(self.nn_structure):
             w_n = self.parameters['w_' + str(idx)]
@@ -179,7 +189,7 @@ class NeuralNetwork:
                 if layer_input_size%2 != 0:
                     raise Exception('Odd number of layers in the last layer, must be even to use doubling trick')
                 # sets weights of last layer to 0
-                if initVarLast != 0:
+                if self.initVarLast != 0:
                     for i in range(layer_output_size):
                         halfArray = np.random.normal(0, self.initVarLast/layer_input_size, int(layer_input_size/2))
                         self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))

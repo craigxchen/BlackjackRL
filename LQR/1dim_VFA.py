@@ -1,3 +1,7 @@
+import sys, os
+# access to files one directory up
+sys.path.append(os.path.abspath(os.path.join("..")))
+
 import numpy as np
 from lqr_control import control
 from VFA_Net import NeuralNetwork
@@ -7,7 +11,7 @@ nn_arq = [
     {"input_dim": 64, "output_dim": 1, "activation": "none"},
 ]
 
-model = NeuralNetwork(nn_arq, bias = False, double = "yes")
+model = NeuralNetwork(nn_arq, bias=False, double=True)
 
 A = np.array(1).reshape(1,1)
 B = np.array(1).reshape(1,1)

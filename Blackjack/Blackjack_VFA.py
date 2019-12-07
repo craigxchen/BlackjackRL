@@ -1,3 +1,7 @@
+import sys, os
+# access to files one directory up
+sys.path.append(os.path.abspath(os.path.join("..")))
+
 from VFA_Net import NeuralNetwork
 from blackjack_complete import Blackjack
 import blackjack_plot_tools as bpt
@@ -18,7 +22,7 @@ BATCH_SIZE = 1
 def loss(target, prediction, alpha=1):
     return float((target-alpha*prediction)**2)
 
-model = NeuralNetwork(nn_arq, bias=True, double = True, seed=1)
+model = NeuralNetwork(nn_arq, bias=True, double=False, zero=True, seed=1)
    
 env = Blackjack()
 

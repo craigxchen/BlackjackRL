@@ -147,9 +147,11 @@ class control:
 
 
         # change to be a loop in the future that supports N colors
+
         ax.plot(x,[alpha*model(np.array(x1).reshape(1,1))[0][0] for x1 in x],color=colors[0],label='Approximated Loss')
         xs = x.reshape(x.size,1)
         ax.plot(x,trueloss(A,B,Q,R,K,xs,Tm,gamma).reshape(x.size),color=colors[1],label='Real Loss')
+
 
         ax.set_xlabel('x',fontsize=label_fontsize)
         ax.set_ylabel('y',fontsize=label_fontsize)
