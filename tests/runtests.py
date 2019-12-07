@@ -28,9 +28,6 @@ def loss(target, prediction, alpha=1):
 
 model = NeuralNetwork(nn_arq, bias=True, double=True, initVar=1, initVarLast=1)
 
-
-# perhaps this might make things easier
-#AA: Nice, thanks!
 def process(x):
     return np.array(x).reshape(1,1)
 
