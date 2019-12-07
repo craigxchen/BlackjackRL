@@ -3,7 +3,7 @@ import sys, os
 sys.path.append(os.path.abspath(os.path.join("..")))
 
 import numpy as np
-from lqr_control import control
+import lqr_control as control
 from VFA_Net import NeuralNetwork
 
 nn_arq = [
