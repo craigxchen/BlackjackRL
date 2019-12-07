@@ -138,7 +138,7 @@ def plot_loss(loss):
 
 def plot_V(model,A,B,Q,R,K,Tm,gamma,alpha,low=-1,high=1):
     fig, ax = plt.subplots()
-    colors = [ '#B53737', '#2D328F' ] # red
+    colors = [ '#B53737', '#2D328F' ] # red, blue
     label_fontsize = 18
 
     x = np.arange(low,high,0.1)
