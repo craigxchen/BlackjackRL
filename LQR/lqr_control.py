@@ -65,22 +65,22 @@ def trueloss(A,B,Q,R,K,xs,T,gamma):
         xs = A*xs + B*us
     return V
 
-def trueloss2(A,B,Q,R,K,xs,T):
-    """
-    !!!!!not sure that this works in hiher dimension!!!!
-    input:
-        - all the matrices
-        - xs is a np.array of shape (l,1) of initial conditions
-        - T is the number of steps
-    output:
-        - computes the sum of discounted rewards starting from the initial conditions stored in x0s up to time T
-    """
-    V = np.zeros(x.size).reshape(x.shape)
-    for j in range(T):
-        us = -K*xs
-        V += (gamma**j)*(xs*Q*xs + us*R*us)
-        xs = A*xs + B*us
-    return V
+#def trueloss2(A,B,Q,R,K,xs,T):
+#    """
+#    !!!!!not sure that this works in hiher dimension!!!!
+#    input:
+#        - all the matrices
+#        - xs is a np.array of shape (l,1) of initial conditions
+#        - T is the number of steps
+#    output:
+#        - computes the sum of discounted rewards starting from the initial conditions stored in x0s up to time T
+#    """
+#    V = np.zeros(x.size).reshape(x.shape)
+#    for j in range(T):
+#        us = -K*xs
+#        V += (gamma**j)*(xs*Q*xs + us*R*us)
+#        xs = A*xs + B*us
+#    return V
 
 
 def plot_paths(x1,x2,ylabel,R1,R2):
@@ -136,12 +136,12 @@ def plot_loss(loss):
     plt.show()
     return
 
-def plot_V(model,A,B,Q,R,K,Tm,gamma,alpha):
+def plot_V(model,A,B,Q,R,K,Tm,gamma,alpha,low=-1,high=1):
     fig, ax = plt.subplots()
     colors = [ '#B53737', '#2D328F' ] # red
     label_fontsize = 18
 
-    x = np.arange(-3,3,0.1)
+    x = np.arange(low,high,0.1)
 
     ax.plot(x,[alpha*model(np.array(x1).reshape(1,1)).item() for x1 in x],color=colors[0],label='Approx. Loss Function')
     xs = x.reshape(x.size,1)
@@ -150,7 +150,7 @@ def plot_V(model,A,B,Q,R,K,Tm,gamma,alpha):
 
     ax.set_xlabel('x',fontsize=label_fontsize)
     ax.set_ylabel('y',fontsize=label_fontsize)
-    plt.legend(fontsize=label_fontsize)
+    plt.legend()
 
     plt.grid(True)
     plt.show()
