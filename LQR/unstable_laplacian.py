@@ -1,5 +1,5 @@
 import numpy as np
-from lqr_control import control 
+import lqr_control as control 
 
 A = np.array([[1.01,0.01,0],[0.01,1.01,0.01],[0,0.01,1.01]])
 B = np.identity(3)

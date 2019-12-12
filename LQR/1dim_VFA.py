@@ -3,7 +3,7 @@ import sys, os
 sys.path.append(os.path.abspath(os.path.join("..")))
 
 import numpy as np
-from lqr_control import control
+import lqr_control as control
 from VFA_Net import NeuralNetwork
 
 nn_arq = [
@@ -33,8 +33,8 @@ GAMMA = 0.9
 K_1, _, _ = control.dlqr(A,B,Q,R1)
 x_1, u_1 = control.simulate_discrete(A,B,K_1,x0,u0,T)
 
-K_2, _, _ = control.dlqr(A,B,Q,R2)
-x_2, u_2 = control.simulate_discrete(A,B,K_2,x0,u0,T)
+#K_2, _, _ = control.dlqr(A,B,Q,R2)
+#x_2, u_2 = control.simulate_discrete(A,B,K_2,x0,u0,T)
 
 def loss(target, prediction, alpha=1):
     return float((1/(alpha**2))*np.square(target-alpha*prediction))
@@ -81,6 +81,10 @@ loss_hist = train(K_2)
 
 #control.plot_loss(loss_hist)
 
+<<<<<<< HEAD
 control.plot_V(model,A,B,Q,R1,K_2,30,GAMMA,ALPHA)
+=======
+control.plot_V(model,A,B,Q,R1,K_1,T,GAMMA,ALPHA,low=-3,high=3)
+>>>>>>> c035edca879593149517ca2b9396c2f9afaa4ae9
 
-control.plot_paths(x_1[0],x_2[0],'Position',R1,R2)
+#control.plot_paths(x_1[0],x_2[0],'Position',R1,R2)

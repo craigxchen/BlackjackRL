@@ -1,5 +1,5 @@
 import numpy as np
-from lqr_control import control 
+import lqr_control as control 
 
 A = np.array([[1,1],[0,1]])
 B = np.array([[0],[1]])
