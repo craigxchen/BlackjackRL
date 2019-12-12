@@ -13,11 +13,12 @@ nn_arq = [
 
 model = NeuralNetwork(nn_arq, bias=False, double=True)
 
+
 A = np.array(1).reshape(1,1)
 B = np.array(1).reshape(1,1)
 Q = np.array(1).reshape(1,1)
 R1 = np.array(1).reshape(1,1)
-R2 = np.array(1.2).reshape(1,1)
+R2 = np.array(15).reshape(1,1)
 
 x0 = np.array(-1).reshape(1,1)
 u0 = np.array(0).reshape(1,1)
@@ -76,10 +77,10 @@ def train(K):
 
 print("y_0 =     "+str(model(np.array(1).reshape(1,1))))
 
-loss_hist = train(K_1)
+loss_hist = train(K_2)
 
 #control.plot_loss(loss_hist)
 
-control.plot_V(model,A,B,Q,R1,K_1,30,GAMMA,ALPHA)
+control.plot_V(model,A,B,Q,R1,K_2,30,GAMMA,ALPHA)
 
 control.plot_paths(x_1[0],x_2[0],'Position',R1,R2)
