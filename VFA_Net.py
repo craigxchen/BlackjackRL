@@ -148,7 +148,7 @@ class NeuralNetwork:
         return
 
     def batch_update_wb(self, step_size, grad_values):
-        temp = defaultdict(lambda: [])
+        temp = defaultdict(list)
         for i in range(len(grad_values)):
             for idx, _ in enumerate(self.nn_structure):
                 temp['dW_'+str(idx)].append(grad_values[i]['dW_'+str(idx)])
