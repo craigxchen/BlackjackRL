@@ -104,7 +104,7 @@ def train(xtrain, epochs=10, **kwargs):
             for k in range(BATCH_SIZE):
 
                 y_hat = model.net_forward(process(xtrain[i]))
-                y = np.array(f_star(xtrain[i])).reshape(1,1)
+                y = process(f_star(xtrain[i]))
 
                 lr = 0.001
 
