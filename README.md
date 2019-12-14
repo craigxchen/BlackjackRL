@@ -57,6 +57,6 @@ TODO WRITE HERE
 ## Authors
 
 * **Craig Chen** - *Initial work* - [craigxchen](https://github.com/craigxchen)
-* **Andrea Agazzi** - *ADD HERE* - [agazzian](ADD HERE)
+* **Andrea Agazzi** - *ADD HERE* - [agazzian](https://github.com/agazzian)
 
 
