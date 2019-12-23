@@ -100,7 +100,6 @@ def plot_paths(x1,x2,ylabel,R1,R2):
     plt.show()
     return
 
-# TODO fix
 def plot_states(x,ylabel,R):
     fig, ax = plt.subplots()
     colors = [ '#B53737', '#0B6623', '#2D328F'] # red, green, blue
@@ -125,7 +124,6 @@ def plot_loss(loss):
     colors = [ '#B53737'] # red
     label_fontsize = 18
 
-    # change to be a loop in the future that supports N colors
     ax.plot(loss,color=colors[0],label='Loss')
 
     ax.set_xlabel('Time',fontsize=label_fontsize)
