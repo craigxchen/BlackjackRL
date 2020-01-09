@@ -25,9 +25,21 @@ Blackjack_VFA is functional; however, can be further optimized. Implements scale
 
 ### LQR
 
-TODO WRITE HERE
+lqr_control implements the dyanmics of an LQR controller and some standard procedures to find the optimal control for this problem (Riccati eq)
 
-## Test Results:
+unstable_laplacian uses lqr_control to simulate an example found in a review paper by Ben Recht 
+
+double_integrator is another example from the same paper
+
+1dim_test uses lqr_control to solve a 1-dimensional example of LQR system
+
+1dim_VFA also solves the LQR control problem simulated with "LQR_control" in 1 dimension but uses a neural network with relu activations as the approximator for the optimal policy as opposed to a linear function as in "1dim_test". 
+
+### Test Results:
+
+runtests performs backpropagation in a supervised learning setting to approximate a linear function in a certain interval with a wide, shallow single layer neural network. 
+
+crude_anim_line plots the evolution of the approximating function and compares it with the original linear function.
 
 ### Blackjack
 
@@ -41,22 +53,29 @@ Parameters: ALPHA = 1000, GAMMA = 1, NUM_TRIALS = 100000 and 500000, function in
 
 Using **normalized 3-vector**, the neural net converges (VFA_TDv6). Also converged when sampling instead of computing expected value (500000 trials)
 
-Architecture: Hidden Layer - 512 neurons, ReLU; Output Layer - 1 neuron, Linear 
+Architecture: Hidden Layer - 512 neurons, ReLU; Output Layer - 1 neuron, Linear
+
 
 Parameters: ALPHA = 100, GAMMA = 1, NUM_TRIALS = 100000 function initialized to zero 
 
 ### LQR
 
-TODO WRITE HERE
+the tests in 1d and in the case of Ben Recht's paper converge immediately if one assumes linearity of the optimal policy. In the case of approximation of the value function with a shallow NN with quadratic nonlinearity we also observe convergence to the global optimum when the policy is assumed to be linear.
+
+### Supervised
+
+We observe convergence of a wide, shallow NN with relu nonlinearities to a linear function, although the convergence is not perfect in the interval of interest. 
 
 ## Future Work:
 
 1. Rewrite VFA_Net using PyTorch/Tensorflow. (and update all dependencies accordingly)
 2. Change Tabular_MC policy from greedy to \epsilon-greedy
+3. Combine the approximation NN of the value function for the LQR with the NN approximation of the policy from the supervised learning setting.
+4. Play around to find regimes of convergence/divergence? Change nonlinearities to see if the result changes. 
 
 ## Authors
 
 * **Craig Chen** - *Initial work* - [craigxchen](https://github.com/craigxchen)
-* **Andrea Agazzi** - *ADD HERE* - [agazzian](https://github.com/agazzian)
+* **Andrea Agazzi** - *Nothing really xD* - [agazzian](https://github.com/agazzian)
 
 
