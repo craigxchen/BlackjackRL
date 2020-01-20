@@ -95,7 +95,7 @@ class NeuralNetwork:
             self.memory['z_' + str(idx)] = z_n
         return a_n
 
-    def gradient_backward(self, a_n, a_prev, w_n, z_n, dA, activation = 'relu'):
+    def gradient_backward(self, a_prev, w_n, z_n, dA, activation = 'relu'):
         if activation == 'none':
             dZ = dA
         elif activation == 'relu':
@@ -132,7 +132,7 @@ class NeuralNetwork:
             z_n = self.memory['z_' + str(idx)]
             w_n = self.parameters['w_' + str(idx)]
 
-            dA_prev, dW, dB = self.gradient_backward(predictions, a_prev, w_n, z_n, dA, layer['activation'])
+            dA_prev, dW, dB = self.gradient_backward(a_prev, w_n, z_n, dA, layer['activation'])
 
             dA = dA_prev
 
