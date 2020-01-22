@@ -11,6 +11,8 @@ You can simply clone/download the repository and run programs as-is. Below is a 
 VFA_Net is a sequential neural net written using primarily Numpy. This is used in place of PyTorch or Tensorflow due to the need for 
 rapid flexibility in customization.
 
+PG_Net backpropogates with respect to the objective function defined in the Policy Gradient Theorem.
+
 TD0_Template is a template for a generic implementation of VFA_Net with TD(0) learning. It contains functioning code as well as pseudocode. 
 
 ### Blackjack
@@ -33,7 +35,7 @@ double_integrator is another example from the same paper
 
 1dim_test uses lqr_control to solve a 1-dimensional example of LQR system
 
-1dim_VFA also solves the LQR control problem simulated with "LQR_control" in 1 dimension but uses a neural network with relu activations as the approximator for the optimal policy as opposed to a linear function as in "1dim_test". 
+1dim_VFA also solves the LQR control problem simulated with "LQR_control" in 1 dimension but uses a neural network with quadratic activations to learn the cost function
 
 ### Test Results:
 
@@ -68,7 +70,7 @@ We observe convergence of a wide, shallow NN with relu nonlinearities to a linea
 
 ## Future Work:
 
-1. Rewrite VFA_Net using PyTorch (and update all dependencies accordingly)
+1. Combine VFA_Net and PG_Net into one file (and update all dependencies accordingly)
 2. Combine the approximation NN of the value function for the LQR with the NN approximation of the policy from the supervised learning setting.
 3. Play around to find regimes of convergence/divergence? Change nonlinearities to see if the result changes. 
 
