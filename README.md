@@ -60,7 +60,7 @@ Parameters: ALPHA = 100, GAMMA = 1, NUM_TRIALS = 100000 function initialized to 
 
 ### LQR
 
-the tests in 1d and in the case of Ben Recht's paper converge immediately if one assumes linearity of the optimal policy. In the case of approximation of the value function with a shallow NN with quadratic nonlinearity we also observe convergence to the global optimum when the policy is assumed to be linear.
+The tests in the 1D and the cases of Ben Recht's paper converge immediately if one assumes linearity of the optimal policy. In the case of approximation of the value function with a shallow NN with quadratic nonlinearity we also observe convergence to the global optimum when the policy is assumed to be linear.
 
 ### Supervised
 
@@ -68,14 +68,13 @@ We observe convergence of a wide, shallow NN with relu nonlinearities to a linea
 
 ## Future Work:
 
-1. Rewrite VFA_Net using PyTorch/Tensorflow. (and update all dependencies accordingly)
-2. Change Tabular_MC policy from greedy to \epsilon-greedy
-3. Combine the approximation NN of the value function for the LQR with the NN approximation of the policy from the supervised learning setting.
-4. Play around to find regimes of convergence/divergence? Change nonlinearities to see if the result changes. 
+1. Rewrite VFA_Net using PyTorch (and update all dependencies accordingly)
+2. Combine the approximation NN of the value function for the LQR with the NN approximation of the policy from the supervised learning setting.
+3. Play around to find regimes of convergence/divergence? Change nonlinearities to see if the result changes. 
 
 ## Authors
 
 * **Craig Chen** - *Initial work* - [craigxchen](https://github.com/craigxchen)
-* **Andrea Agazzi** - *Nothing really xD* - [agazzian](https://github.com/agazzian)
+* **Andrea Agazzi** - *Improvements* - [agazzian](https://github.com/agazzian)
 
 
