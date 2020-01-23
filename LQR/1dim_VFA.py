@@ -12,7 +12,7 @@ nn_arq = [
     {"input_dim": 64, "output_dim": 1, "activation": "none"},
 ]
 
-model = NeuralNetwork(nn_arq, bias=False, double=True)
+model = NeuralNetwork(nn_arq, bias=True, double=True)
 
 
 A = np.array(1).reshape(1,1)
@@ -26,7 +26,7 @@ u0 = np.array(0).reshape(1,1)
 # number of time steps to simulate
 T = 30
 # number of iterations of the dynamical systems for training
-NUM_TRIALS = 100
+NUM_TRIALS = 200
 ALPHA = 100
 GAMMA = 0.9
 
@@ -76,27 +76,27 @@ def live_train(K, low=-1, high=1):
     ax = fig.add_subplot(1,1,1)
     ax.set_xlim(low,high)
     xtest = np.linspace(low,high,100)
-    
+
     for j in range(NUM_TRIALS):
         x = np.random.randn(1).reshape(1,1)
-        for i in range(T):   
+        for i in range(T):
             if (i+1)%(T/5) == 0:
                 y_hat = np.array([ALPHA*model(np.array(x1).reshape(1,1)).item() for x1 in xtest])
                 xs = xtest.reshape(xtest.size,1)
                 y = control.trueloss(A,B,Q,R,K,xs,T,GAMMA).reshape(xtest.size)
-    
+
                 ax.clear()
                 ax.plot(xtest, y_hat, 'r-')
                 ax.plot(xtest, y, 'k-')
-            
+
                 plt.grid(True)
                 ax.set_xlabel('x',fontsize=18)
                 ax.set_ylabel('y',fontsize=18)
                 plt.pause(0.05)
-                             
+
             u = -np.matmul(K,x)
             r = np.matmul(x,np.matmul(Q,x)) + np.matmul(u,np.matmul(R,u))
-            
+
             y = r + ALPHA*GAMMA*model(np.matmul(A,x) + np.matmul(B,u))
             y_hat = model.net_forward(x)
 
@@ -106,7 +106,7 @@ def live_train(K, low=-1, high=1):
             model.update_wb(lr)
 
             x = np.matmul(A,x) + np.matmul(B,u)
-        
+
     plt.show()
     return
 
@@ -116,4 +116,3 @@ def live_train(K, low=-1, high=1):
 #control.plot_V(model,A,B,Q,R,K,T,GAMMA,ALPHA,low=-3,high=3)
 
 live_train(K)
-

@@ -18,6 +18,7 @@ class PGNet:
         self.memory = {}
         self.grad_values = {}
 
+        # adding SIGMA for the variance of the sample points in case of SPG_normal
         # TODO: add if statement to catch when double and zero are both true
 
         if seed is not None:
@@ -142,7 +143,7 @@ class PGNet:
         return self.grad_values
 
 
-    def net_backward_SPG_normal(self, advantages, predictions, actions, SIGMA):
+    def net_backward_SPG_normal(self, advantage, predictions, actions, SIGMA):
         """
         SPG with gaussian distro, the neural network parametrizes the mean while the variance is kept constant (SIGMA)
         advantages = samples of the advantage function
@@ -153,7 +154,7 @@ class PGNet:
         """
         #TODO: change code to allow for multidimensional actions
         # cross entropy loss derivative times derivative of normal distro wrt mean
-        dA = -advantages*(predictions-actions)/SIGMA**2
+        dA = -advantage*(predictions-actions)/SIGMA**2
 
         for idx, layer in reversed(list(enumerate(self.nn_structure))):
             if idx == 0:
