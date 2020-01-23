@@ -17,12 +17,12 @@ class PGNet:
         # intializes dictionaries needed to store values for backpropagation
         self.memory = {}
         self.grad_values = {}
-        
+
         # TODO: add if statement to catch when double and zero are both true
-    
+
         if seed is not None:
             np.random.seed(seed)
-        
+
         # loop through neural net
         for idx, layer in enumerate(self.nn_structure):
 
@@ -35,16 +35,16 @@ class PGNet:
                 self.parameters['b_' + str(idx)] = np.zeros((layer_output_size,1))
 
             self.parameters['w_' + str(idx)] = np.random.normal(0, self.initVarLast/layer_input_size, (layer_output_size, layer_input_size))
-            
+
             if self.double and idx == self.num_layers-1:
                 if layer_input_size%2 != 0:
                     raise Exception('Odd number of layers in the last layer, must be even to use doubling trick')
-                    
+
                 # TODO: change so it doubles every hidden layer to ensure initialization to 0 (?)
                 for i in range(layer_output_size):
                     halfArray = np.random.normal(0, self.initVarLast/layer_input_size, int(layer_input_size/2))
                     self.parameters['w_' + str(idx)][i] = np.concatenate((halfArray,np.negative(halfArray)))
-                        
+
             # sets weights of last layer to 0
             elif self.zero  and idx == self.num_layers-1:
                 self.parameters['w_' + str(idx)] = np.zeros((layer_output_size,layer_input_size))
@@ -107,27 +107,72 @@ class PGNet:
             dB = np.zeros(dZ.shape)
 
         return dA_prev, dW, dB
-    
-    def net_backward(self, targets, predictions):
-        # cross entropy loss derivative
+
+    """
+    The following functions compute the backward pass for the gradient ascent of the policy gradient routine
+    the derivative of the cost function varies depending on the parametrization of
+    the actor network, stored in the 'criticstyle' variable:
+    """
+
+    def net_backward_SPG_tabular(self, targets, predictions):
+        """
+        SPG_tabular = stochastic policy gradient (SPG) with tabular
+                      critic, cross entropy loss
+        """
+        #TODO: change code to allow for multidimensional actions
+        # cross entropy loss derivativeS
         dA = targets/predictions
+
         for idx, layer in reversed(list(enumerate(self.nn_structure))):
             if idx == 0:
                 a_prev = self.input_batch
-            else: 
+            else:
                 a_prev = self.memory['a_' + str(idx-1)]
-                
+
             z_n = self.memory['z_' + str(idx)]
             w_n = self.parameters['w_' + str(idx)]
-            
+
             dA_prev, dW, dB = self.gradient_backward(a_prev, w_n, z_n, dA, layer['activation'])
-            
+
             dA = dA_prev
-            
+
             self.grad_values['dW_' + str(idx)] = dW
             self.grad_values['dB_' + str(idx)] = dB
-            
+
         return self.grad_values
+
+
+    def net_backward_SPG_normal(self, advantages, predictions, actions, SIGMA):
+        """
+        SPG with gaussian distro, the neural network parametrizes the mean while the variance is kept constant (SIGMA)
+        advantages = samples of the advantage function
+        actions = samples of actions during the sampled MDP
+        predictions = outputs of neural network for sequence of states from sampled MDP, i.e.
+                      values of the average of the stochastic policy for those states.
+        SIGMA = variance of the stochastic policy
+        """
+        #TODO: change code to allow for multidimensional actions
+        # cross entropy loss derivative times derivative of normal distro wrt mean
+        dA = -advantages*(predictions-actions)/SIGMA**2
+
+        for idx, layer in reversed(list(enumerate(self.nn_structure))):
+            if idx == 0:
+                a_prev = self.input_batch
+            else:
+                a_prev = self.memory['a_' + str(idx-1)]
+
+            z_n = self.memory['z_' + str(idx)]
+            w_n = self.parameters['w_' + str(idx)]
+
+            dA_prev, dW, dB = self.gradient_backward(a_prev, w_n, z_n, dA, layer['activation'])
+
+            dA = dA_prev
+
+            self.grad_values['dW_' + str(idx)] = dW
+            self.grad_values['dB_' + str(idx)] = dB
+
+        return self.grad_values
+
 
     def update_wb(self, step_size):
         for idx, layer in enumerate(self.nn_structure):
@@ -155,8 +200,7 @@ class PGNet:
 
     def softmax(self, x):
         return np.exp(x)/np.sum(np.exp(x))
-    
+
     def dsoftmax(self, x):
         s = self.softmax(x)
         return np.diagflat(s) - np.matmul(s, s.T)
-    
