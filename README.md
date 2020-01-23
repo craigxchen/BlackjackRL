@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-Install the prerequisite libraries: `pip install numpy scipy matplotlib pickle`
+Install the prerequisite libraries: `pip install numpy scipy matplotlib pickle` and `pip install torch==1.4.0+cpu torchvision==0.5.0+cpu -f https://download.pytorch.org/whl/torch_stable.html`
 
 You can simply clone/download the repository and run programs as-is. Below is a brief explanation of what is included:
 
