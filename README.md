@@ -1,5 +1,10 @@
 # Reinforcement Learning Value Function Approximation
 
+## Immediate To-Do's
+
+1. Fix PPO algorithm by separating the Actor and Critic
+2. Implement PPO for simple LQR
+
 ## Getting Started
 
 Install the prerequisite libraries: `pip install numpy scipy matplotlib pickle` and `pip install torch==1.4.0+cpu torchvision==0.5.0+cpu -f https://download.pytorch.org/whl/torch_stable.html`
