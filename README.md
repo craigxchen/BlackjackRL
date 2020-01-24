@@ -4,6 +4,8 @@
 
 1. Fix PPO algorithm by separating the Actor and Critic
 2. Implement PPO for simple LQR
+3. Implement custom weight initialization for pytorch.nn.Sequential models
+4. Implement custom nonlinearities (i.e. quadratic) for pytorch model
 
 ## Getting Started
 
