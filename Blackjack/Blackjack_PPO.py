@@ -76,7 +76,10 @@ class ActorCritic(nn.Module):
         if zero:
             with torch.no_grad():
                 self.action_layer[-1].weight = nn.Parameter(torch.zeros([action_dim, n_latent_var]))
+                self.action_layer[-1].bias = nn.Parameter(torch.zeros([action_dim,]))
+                
                 self.value_layer[-1].weight = nn.Parameter(torch.zeros([1, n_latent_var]))
+                self.value_layer[-1].bias = nn.Parameter(torch.zeros([1,]))
     
     def get_dist(self, state):
         state = torch.from_numpy(np.array(state)).float().to(device) 
@@ -171,7 +174,7 @@ class PPO:
         # Copy new weights into old policy:
         self.policy_old.load_state_dict(self.policy.state_dict())
         
-    def update_critic(self, memory):   
+    def update_critic(self, memory, alpha=100):   
         states = torch.stack(memory.states).to(device).detach()
         
         rewards = []
@@ -182,13 +185,13 @@ class PPO:
             discounted_reward = reward + (self.gamma * discounted_reward)
             rewards.insert(0, discounted_reward)
         
-        rewards = torch.tensor(rewards).to(device)
+        rewards = alpha*torch.tensor(rewards).to(device)
         
         # Optimize critic for K epochs:
         for _ in range(self.K_epochs):
-            state_values = torch.squeeze(self.policy.value_layer(states))
+            state_values = alpha*torch.squeeze(self.policy.value_layer(states))
             
-            critic_loss = 0.5*self.MseLoss(state_values,rewards)
+            critic_loss = 0.5/(alpha**2)*self.MseLoss(state_values,rewards)
             
             # take gradient step
             self.critic_optimizer.zero_grad()
@@ -204,14 +207,15 @@ if __name__ == '__main__':
     state_dim = 3
     action_dim = 2
     log_interval = 5000         # print avg reward in the interval
-    max_episodes = 400000       # max training episodes
+    max_episodes = 250000       # max training episodes
     batch_size = 64
     n_latent_var = 256          # number of variables in hidden layer
     update_timestep = 128       # update policy every n timesteps
     
-    reward_threshold = -0.055   # if avg reward > threshold, break out of training
+    reward_threshold = -0.05   # if avg reward > threshold, break out of training
     
     lr = 0.001
+    alpha = 100
     betas = (0.9, 0.999)
     gamma = 0.99                # discount factor
     K_epochs = 5                # update policy for K epochs
@@ -249,7 +253,7 @@ if __name__ == '__main__':
             # update if its time
             if timestep % update_timestep == 0:
                 ppo.update_actor(memory)
-                ppo.update_critic(memory)
+                ppo.update_critic(memory, alpha)
                 memory.clear_memory()
                 timestep = 0
             
@@ -274,7 +278,7 @@ if __name__ == '__main__':
             avg_length = 0
             
             
-    P = dict((k,ppo.policy.act(k,None)) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
+    P = dict((k,ppo.policy.act(np.array(k),None)) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
     V = dict((k,ppo.policy.value_layer(torch.from_numpy(np.array(k)).float().to(device).detach()).item()) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
     bpt.plot_policy(P, False)
     bpt.plot_policy(P, True)
