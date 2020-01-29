@@ -2,9 +2,8 @@
 
 ## Immediate To-Do's
 
-1. Implement PPO for simple LQR
-2. Fix instability of PPO/LQR agent
-3. Implement custom weight initialization for pytorch.nn.Sequential models
+1. Fix instability of LQR PPO agent
+2. Implement "doubling trick" weight initialization for pytorch.nn.Sequential models (perhaps will solve 1.)
 
 ## Getting Started
 
