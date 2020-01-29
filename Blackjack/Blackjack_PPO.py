@@ -160,10 +160,11 @@ class PPO:
             # Finding the ratio (pi_theta / pi_theta__old):
             ratios = torch.exp(logprobs - old_logprobs.detach())
                 
-            # Finding Surrogate Loss:
+            # Finding Surrogate Loss: see https://spinningup.openai.com/en/latest/algorithms/ppo.html
             advantages = rewards - state_values.detach()
             surr1 = ratios * advantages
-            surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
+            surr2 = (torch.ones_like(advantages) + self.eps_clip * torch.sign(advantages)) * advantages
+#            surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
             actor_loss = -torch.min(surr1, surr2)
             
             # take gradient step
@@ -185,7 +186,9 @@ class PPO:
             discounted_reward = reward + (self.gamma * discounted_reward)
             rewards.insert(0, discounted_reward)
         
-        rewards = alpha*torch.tensor(rewards).to(device)
+        # Normalizing and scaling the rewards
+        rewards = torch.tensor(rewards).to(device)
+        rewards = alpha*(rewards - rewards.mean()) / (rewards.std() + 1e-5)
         
         # Optimize critic for K epochs:
         for _ in range(self.K_epochs):
@@ -212,7 +215,7 @@ if __name__ == '__main__':
     n_latent_var = 256          # number of variables in hidden layer
     update_timestep = 128       # update policy every n timesteps
     
-    reward_threshold = -0.05   # if avg reward > threshold, break out of training
+    reward_threshold = -0.04    # if avg reward > threshold, break out of training
     
     lr = 0.001
     alpha = 100
