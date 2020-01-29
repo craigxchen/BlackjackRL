@@ -39,6 +39,26 @@ def compare_paths(x_sim,x_star):
     plt.show()
     return
 
+def compare_V(critic,A,B,Q,R,K,T,gamma,alpha,low=-1,high=1):
+    fig, ax = plt.subplots()
+    colors = [ '#B53737', '#2D328F' ] # red, blue
+    label_fontsize = 18
+
+    states = torch.linspace(low,high).detach().reshape(100,1)
+    values = alpha*critic(states).squeeze().detach().numpy()
+
+    ax.plot(states.numpy(),values,color=colors[0],label='Approx. Loss Function')
+    ax.plot(states.numpy(),control.trueloss(A,B,Q,R,K,states.numpy(),T,gamma).reshape(states.shape[0]),color=colors[1],label='Real Loss Function')
+
+
+    ax.set_xlabel('x',fontsize=label_fontsize)
+    ax.set_ylabel('y',fontsize=label_fontsize)
+    plt.legend()
+
+    plt.grid(True)
+    plt.show()
+    return
+
 class Memory:
     def __init__(self):
         self.actions = []
@@ -105,7 +125,7 @@ class ActorCritic(nn.Module):
         
         return action.detach()
     
-    def evaluate(self, state, action):   
+    def evaluate(self, state, action, alpha):   
         action_mean = torch.squeeze(self.actor(state))
         
         action_var = self.action_var.expand_as(action_mean)
@@ -115,15 +135,16 @@ class ActorCritic(nn.Module):
         
         action_logprobs = dist.log_prob(torch.squeeze(action))
         dist_entropy = dist.entropy()
-        state_value = self.critic(state)
+        state_value = alpha*self.critic(state)
         
         return action_logprobs, torch.squeeze(state_value), dist_entropy
 
 class PPO:
-    def __init__(self, state_dim, action_dim, n_latent_var, action_std, lr, betas, gamma, K_epochs, eps_clip):
+    def __init__(self, state_dim, action_dim, n_latent_var, action_std, lr, betas, alpha, gamma, K_epochs, eps_clip):
         self.lr = lr
         self.betas = betas
         self.gamma = gamma
+        self.alpha = alpha
         self.eps_clip = eps_clip
         self.K_epochs = K_epochs
         
@@ -163,7 +184,7 @@ class PPO:
         # Optimize policy for K epochs:
         for _ in range(self.K_epochs):
             # Evaluating old actions and values :
-            logprobs, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
+            logprobs, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions, self.alpha)
             
             # Finding the ratio (pi_theta / pi_theta__old): clamp the logprobs to prevent NaN's
             ratios = torch.exp(torch.clamp(logprobs - old_logprobs, -1, 1))
@@ -182,7 +203,7 @@ class PPO:
         # Copy new weights into old policy:
         self.policy_old.load_state_dict(self.policy.state_dict())
         
-    def update_critic(self, memory, alpha=100):   
+    def update_critic(self, memory):   
         states = torch.stack(memory.states).to(device).detach()
         
         rewards = []
@@ -194,13 +215,13 @@ class PPO:
             rewards.insert(0, discounted_reward)
         
         rewards = torch.tensor(rewards).to(device)
-        rewards = alpha*(rewards - rewards.mean()) / (rewards.std() + 1e-5)
+        rewards = self.alpha*(rewards - rewards.mean()) / (rewards.std() + 1e-5)
         
         # Optimize critic for K epochs:
         for _ in range(self.K_epochs):
-            state_values = alpha*torch.squeeze(self.policy.critic(states))
+            state_values = self.alpha*torch.squeeze(self.policy.critic(states))
             
-            critic_loss = 0.5/(alpha**2)*self.MseLoss(state_values,rewards)
+            critic_loss = 0.5/(self.alpha**2)*self.MseLoss(state_values,rewards)
             
             # take gradient step
             self.critic_optimizer.zero_grad()
@@ -244,7 +265,7 @@ if __name__ == '__main__':
         np.random.seed(random_seed)
     
     memory = Memory()
-    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, lr, betas, gamma, K_epochs, eps_clip)
+    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, lr, betas, alpha, gamma, K_epochs, eps_clip)
     print("lr: {}, betas: {}".format(lr,betas))  
     
     # logging variables
@@ -270,7 +291,7 @@ if __name__ == '__main__':
             # update if its time
             if time_step % update_timestep == 0:
                 ppo.update_actor(memory)
-                ppo.update_critic(memory, alpha)
+                ppo.update_critic(memory)
                 memory.clear_memory()
                 time_step = 0
             running_reward += reward.item()
@@ -304,5 +325,6 @@ if __name__ == '__main__':
     
     compare_paths(np.array(x_sim), np.squeeze(x_star[:,:-1]))
     compare_paths(np.array(u_sim), np.squeeze(u_star[:,:-1]))
+    compare_V(ppo.policy.critic,A,B,Q,R,K,T,gamma,alpha)
     
     
