@@ -55,11 +55,11 @@ class Memory:
         del self.is_terminals[:]
 
 class ActorCritic(nn.Module):
-    def __init__(self, state_dim, action_dim, n_latent_var, zero=False):
+    def __init__(self, state_dim, action_dim, n_latent_var, zero=False, double=False):
         super(ActorCritic, self).__init__()
 
         # actor
-        self.action_layer = nn.Sequential(
+        self.actor = nn.Sequential(
                 nn.Linear(state_dim, n_latent_var),
                 nn.ReLU(),
                 nn.Linear(n_latent_var, action_dim),
@@ -67,7 +67,7 @@ class ActorCritic(nn.Module):
                 )
         
         # critic
-        self.value_layer = nn.Sequential(
+        self.critic = nn.Sequential(
                 nn.Linear(state_dim, n_latent_var),
                 nn.ReLU(),
                 nn.Linear(n_latent_var, 1)
@@ -75,15 +75,31 @@ class ActorCritic(nn.Module):
         
         if zero:
             with torch.no_grad():
-                self.action_layer[-1].weight = nn.Parameter(torch.zeros([action_dim, n_latent_var]))
-                self.action_layer[-1].bias = nn.Parameter(torch.zeros([action_dim,]))
+                self.actor[-2].weight = nn.Parameter(torch.zeros([action_dim, n_latent_var]))
+                if self.actor[-2].bias is not None:
+                    self.actor[-2].bias = nn.Parameter(torch.zeros([action_dim,]))
                 
-                self.value_layer[-1].weight = nn.Parameter(torch.zeros([1, n_latent_var]))
-                self.value_layer[-1].bias = nn.Parameter(torch.zeros([1,]))
+                self.critic[-1].weight = nn.Parameter(torch.zeros([1, n_latent_var]))
+                if self.critic[-1].bias is not None:
+                    self.critic[-1].bias = nn.Parameter(torch.zeros([1,]))
+                    
+        if double:
+            with torch.no_grad():
+                temp1 = torch.randn([n_latent_var//2,state_dim]) * np.sqrt(2/n_latent_var)
+                self.critic[0].weight = nn.Parameter(torch.cat((temp1,temp1),dim=0))
+                
+                temp2 = torch.randn([1,n_latent_var//2]) * np.sqrt(2/n_latent_var)
+                self.critic[-1].weight = nn.Parameter(torch.cat((temp2,-temp2),dim=1))
+                
+                temp3 = torch.randn([n_latent_var//2,state_dim]) * np.sqrt(2/n_latent_var)
+                self.actor[0].weight = nn.Parameter(torch.cat((temp3,temp3),dim=0))
+                
+                temp4 = torch.randn([action_dim,n_latent_var//2]) * np.sqrt(2/n_latent_var)
+                self.actor[-2].weight = nn.Parameter(torch.cat((temp4,-temp4),dim=1))
     
     def get_dist(self, state):
         state = torch.from_numpy(np.array(state)).float().to(device) 
-        action_probs = self.action_layer(state)
+        action_probs = self.actor(state)
         dist = Categorical(action_probs)
         return dist
     
@@ -92,7 +108,7 @@ class ActorCritic(nn.Module):
         
     def act(self, state, memory):
         state = torch.from_numpy(np.array(state)).float().to(device) 
-        action_probs = self.action_layer(state)
+        action_probs = self.actor(state)
         dist = Categorical(action_probs)
         action = dist.sample()
         if not memory:
@@ -105,30 +121,29 @@ class ActorCritic(nn.Module):
         return action.item()
     
     def evaluate(self, state, action):
-        action_probs = self.action_layer(state)
+        action_probs = self.actor(state)
         dist = Categorical(action_probs)
         
         action_logprobs = dist.log_prob(action)
         dist_entropy = dist.entropy()
         
-        state_value = self.value_layer(state)
+        state_value = self.critic(state)
         
         return action_logprobs, torch.squeeze(state_value), dist_entropy
         
 class PPO:
-    def __init__(self, state_dim, action_dim, n_latent_var, lr, betas, gamma, K_epochs, eps_clip):
-        self.lr = lr
+    def __init__(self, state_dim, action_dim, n_latent_var, actor_lr, critic_lr, betas, gamma, K_epochs, eps_clip, zero=False, double=False):
         self.betas = betas
         self.gamma = gamma
         self.eps_clip = eps_clip
         self.K_epochs = K_epochs
         
-        self.policy = ActorCritic(state_dim, action_dim, n_latent_var, zero=True).to(device)
+        self.policy = ActorCritic(state_dim, action_dim, n_latent_var, zero, double).to(device)
         
-        self.actor_optimizer = torch.optim.Adam(self.policy.action_layer.parameters(), lr=lr, betas=betas)
-        self.critic_optimizer = torch.optim.Adam(self.policy.value_layer.parameters(), lr=lr, betas=betas)
+        self.actor_optimizer = torch.optim.Adam(self.policy.actor.parameters(), lr=actor_lr, betas=betas)
+        self.critic_optimizer = torch.optim.Adam(self.policy.critic.parameters(), lr=critic_lr, betas=betas)
         
-        self.policy_old = ActorCritic(state_dim, action_dim, n_latent_var, zero=True).to(device)
+        self.policy_old = ActorCritic(state_dim, action_dim, n_latent_var, zero, double).to(device)
         self.policy_old.load_state_dict(self.policy.state_dict())
         
         self.MseLoss = nn.MSELoss()
@@ -192,7 +207,7 @@ class PPO:
         
         # Optimize critic for K epochs:
         for _ in range(self.K_epochs):
-            state_values = alpha*torch.squeeze(self.policy.value_layer(states))
+            state_values = alpha*torch.squeeze(self.policy.critic(states))
             
             critic_loss = 0.5/(alpha**2)*self.MseLoss(state_values,rewards)
             
@@ -217,7 +232,8 @@ if __name__ == '__main__':
     
     reward_threshold = -0.04    # if avg reward > threshold, break out of training
     
-    lr = 0.001
+    actor_lr = 0.0003
+    critic_lr = 0.001
     alpha = 100
     betas = (0.9, 0.999)
     gamma = 0.99                # discount factor
@@ -231,8 +247,8 @@ if __name__ == '__main__':
         env.seed(random_seed)
     
     memory = Memory()
-    ppo = PPO(state_dim, action_dim, n_latent_var, lr, betas, gamma, K_epochs, eps_clip)
-    print("lr: {}, betas: {}".format(lr,betas))
+    ppo = PPO(state_dim, action_dim, n_latent_var, actor_lr, critic_lr, betas, gamma, K_epochs, eps_clip, zero=False, double=True)
+    print("actor lr: {}, critic lr: {}, betas: {}".format(actor_lr,critic_lr,betas))
     
     # logging variables
     running_reward = 0
@@ -282,7 +298,7 @@ if __name__ == '__main__':
             
             
     P = dict((k,ppo.policy.act(np.array(k),None)) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
-    V = dict((k,ppo.policy.value_layer(torch.from_numpy(np.array(k)).float().to(device).detach()).item()) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
+    V = dict((k,ppo.policy.critic(torch.from_numpy(np.array(k)).float().to(device).detach()).item()) for k in ([(x, y, True) for x in range(12,22) for y in range(1,11)] + [(x, y, False) for x in range(4,22) for y in range(1, 11)]))
     bpt.plot_policy(P, False)
     bpt.plot_policy(P, True)
     bpt.plot_v(V, False)

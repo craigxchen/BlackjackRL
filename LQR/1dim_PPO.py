@@ -7,6 +7,8 @@ import lqr_control as control
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+# rewards in this case are actually costs - we are minimizing the actor/critic costs
+
 def simulate(A,B,policy,x0,u0,T):
     """
     simulate trajectory based on policy learned by PPO agent
@@ -24,7 +26,7 @@ def simulate(A,B,policy,x0,u0,T):
         
     return x_data, u_data
 
-def compare_paths(x_sim,x_star):
+def compare_paths(x_sim,x_star,ylabel):
     fig, ax = plt.subplots()
     colors = [ '#2D328F', '#F15C19' ] # blue, orange
     
@@ -33,6 +35,7 @@ def compare_paths(x_sim,x_star):
     ax.plot(t,x_star,color=colors[1],label='True')
     
     ax.set_xlabel('Time',fontsize=18)
+    ax.set_ylabel(ylabel,fontsize=18)
     plt.legend(fontsize=18)
     
     plt.grid(True)
@@ -83,14 +86,13 @@ class Quadratic(nn.Module):
         return x**2
 
 class ActorCritic(nn.Module):
-    def __init__(self, state_dim, action_dim, n_latent_var, action_std, zero=False):
+    def __init__(self, state_dim, action_dim, n_latent_var, action_std, zero=False, double=False):
         super(ActorCritic, self).__init__()
         # action mean range -1 to 1
         self.actor =  nn.Sequential(
                 nn.Linear(state_dim, n_latent_var, bias=False),
-                nn.Tanh(),
+#                nn.ReLU(),
                 nn.Linear(n_latent_var, action_dim, bias=False),
-                nn.Tanh(),
                 )
         # critic
         self.critic = nn.Sequential(
@@ -100,14 +102,31 @@ class ActorCritic(nn.Module):
                 )
         self.action_var = torch.full((action_dim,), action_std*action_std).to(device)
         
-        if zero: 
+        if zero: # zero the last layer
             with torch.no_grad():                
-                self.critic[-1].weight = nn.Parameter(torch.zeros([1, n_latent_var]))
-#                self.critic[-1].bias = nn.Parameter(torch.zeros([1, 1]))
+                self.critic[-1].weight.fill_(0.0)
+                if self.critic[-1].bias is not None:
+                    self.critic[-1].bias.fill_(0.0)
                 
-                self.actor[-1].weight = nn.Parameter(torch.zeros([action_dim, n_latent_var]))
-#                self.actor[-1].bias = nn.Parameter(torch.zeros([action_dim, 1]))
+                self.actor[-1].weight.fill_(0.0)
+                if self.actor[-1].bias is not None:
+                    self.actor[-1].bias.fill_(0.0)
+                    
+        if double:
+            with torch.no_grad():
+                temp1 = torch.randn([n_latent_var//2,state_dim]) * np.sqrt(2/n_latent_var)
+                self.critic[0].weight = nn.Parameter(torch.cat((temp1,temp1),dim=0))
+                
+                temp2 = torch.randn([1,n_latent_var//2]) * np.sqrt(2/n_latent_var)
+                self.critic[-1].weight = nn.Parameter(torch.cat((temp2,-temp2),dim=1))
+                
+                temp3 = torch.randn([n_latent_var//2,state_dim]) * np.sqrt(2/n_latent_var)
+                self.actor[0].weight = nn.Parameter(torch.cat((temp3,temp3),dim=0))
+                
+                temp4 = torch.randn([action_dim,n_latent_var//2]) * np.sqrt(2/n_latent_var)
+                self.actor[-1].weight = nn.Parameter(torch.cat((temp4,-temp4),dim=1))
         
+         
     def forward(self):
         raise NotImplementedError
     
@@ -140,20 +159,19 @@ class ActorCritic(nn.Module):
         return action_logprobs, torch.squeeze(state_value), dist_entropy
 
 class PPO:
-    def __init__(self, state_dim, action_dim, n_latent_var, action_std, lr, betas, alpha, gamma, K_epochs, eps_clip):
-        self.lr = lr
+    def __init__(self, state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, zero=False, double=False):
         self.betas = betas
         self.gamma = gamma
         self.alpha = alpha
         self.eps_clip = eps_clip
         self.K_epochs = K_epochs
         
-        self.policy = ActorCritic(state_dim, action_dim, n_latent_var, action_std, zero=True).to(device)
+        self.policy = ActorCritic(state_dim, action_dim, n_latent_var, action_std, zero, double).to(device)
         
-        self.actor_optimizer = torch.optim.Adam(self.policy.actor.parameters(), lr=lr, betas=betas)
-        self.critic_optimizer = torch.optim.Adam(self.policy.critic.parameters(), lr=lr, betas=betas)
+        self.actor_optimizer = torch.optim.Adam(self.policy.actor.parameters(), lr=actor_lr, betas=betas)
+        self.critic_optimizer = torch.optim.Adam(self.policy.critic.parameters(), lr=critic_lr, betas=betas)
         
-        self.policy_old = ActorCritic(state_dim, action_dim, n_latent_var, action_std, zero=True).to(device)
+        self.policy_old = ActorCritic(state_dim, action_dim, n_latent_var, action_std, zero, double).to(device)
         self.policy_old.load_state_dict(self.policy.state_dict())
         
         self.MseLoss = nn.MSELoss()
@@ -188,12 +206,13 @@ class PPO:
             
             # Finding the ratio (pi_theta / pi_theta__old): clamp the logprobs to prevent NaN's
             ratios = torch.exp(torch.clamp(logprobs - old_logprobs, -1, 1))
+#            ratios = torch.exp(logprobs - old_logprobs)
                 
             # Finding Surrogate Loss:
             advantages = rewards - state_values.detach()
             surr1 = ratios * advantages
             surr2 = (torch.ones_like(advantages) + self.eps_clip * torch.sign(advantages)) * advantages
-            actor_loss = -torch.min(surr1, surr2)
+            actor_loss = torch.min(surr1, surr2)
             
             # take gradient step
             self.actor_optimizer.zero_grad()
@@ -234,29 +253,30 @@ if __name__ == '__main__':
     
     A = np.array(1).reshape(1,1)
     B = np.array(1).reshape(1,1)
-    Q = np.array(-1).reshape(1,1)
-    R = np.array(-1).reshape(1,1)
+    Q = np.array(1).reshape(1,1)
+    R = np.array(1).reshape(1,1)
     
     state_dim = 1
     action_dim = 1
-    log_interval = 500          # print avg reward in the interval
-    max_episodes = 50000        # max training episodes
-    max_timesteps = 50          # max timesteps in one episode
+    log_interval = 400           # print avg reward in the interval
+    max_episodes = 10000         # max training episodes
+    max_timesteps = 100          # max timesteps in one episode
     
 #    solved_reward = None
     
-    n_latent_var = 64           # number of variables in hidden laye
-    update_timestep = 500       # update policy every n timesteps
-    action_std = 0.1            # constant std for action distribution (Multivariate Normal)
-    K_epochs = 5                # update policy for K epochs
-    eps_clip = 0.2              # clip parameter for PPO
-    gamma = 0.99                # discount factor
-    
+    n_latent_var = 64            # number of variables in hidden laye
+    update_timestep = 400        # update policy every n timesteps
+    action_std = 0.1             # constant std for action distribution (Multivariate Normal)
+    K_epochs = 80                # update policy for K epochs
+    eps_clip = 0.2               # clip parameter for PPO
+    gamma = 0.99                 # discount factor
     alpha = 100
-    lr = 0.0005                 # parameters for Adam optimizer
+                                 # parameters for Adam optimizer
+    actor_lr = 0.0003        
+    critic_lr = 0.001          
     betas = (0.9, 0.999)
     
-    random_seed = None
+    random_seed = 1
     #############################################
     
     if random_seed:
@@ -265,8 +285,8 @@ if __name__ == '__main__':
         np.random.seed(random_seed)
     
     memory = Memory()
-    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, lr, betas, alpha, gamma, K_epochs, eps_clip)
-    print("lr: {}, betas: {}".format(lr,betas))  
+    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, zero=False, double=True)
+    print("actor lr: {}, critic lr: {}, betas: {}".format(actor_lr,critic_lr,betas))  
     
     # logging variables
     running_reward = 0
@@ -276,6 +296,7 @@ if __name__ == '__main__':
     # training loop
     for i_episode in range(1, max_episodes+1):
         state = np.random.randn(1).reshape(1,1)
+        done = False
         for t in range(max_timesteps):
             time_step +=1
             # Running policy_old:
@@ -283,10 +304,15 @@ if __name__ == '__main__':
             
             reward = np.matmul(state,np.matmul(Q,state)) + np.matmul(np.array(action).reshape(1,1),np.matmul(R,np.array(action).reshape(1,1)))
             state = np.matmul(A,state) + np.matmul(B,np.array(action).reshape(1,1))
+            
+            if np.abs(state) > 10:
+                done = True
+                reward = np.array(1000).reshape(1,1)
+            
 #            print(reward,t)
             # Saving reward and is_terminals:
             memory.rewards.append(reward.item())
-            memory.is_terminals.append(False)
+            memory.is_terminals.append(done)
             
             # update if its time
             if time_step % update_timestep == 0:
@@ -294,8 +320,11 @@ if __name__ == '__main__':
                 ppo.update_critic(memory)
                 memory.clear_memory()
                 time_step = 0
+                
             running_reward += reward.item()
-        
+            if done:
+                break
+            
         avg_length += t
         
         # stop training if avg_reward > solved_reward
@@ -323,8 +352,8 @@ if __name__ == '__main__':
     x_star, u_star = control.simulate_discrete(A,B,K,x0.reshape(1,1),u0.reshape(1,1),T)
     x_sim, u_sim = simulate(A,B,ppo.policy.actor,x0,u0,T)
     
-    compare_paths(np.array(x_sim), np.squeeze(x_star[:,:-1]))
-    compare_paths(np.array(u_sim), np.squeeze(u_star[:,:-1]))
+    compare_paths(np.array(x_sim), np.squeeze(x_star[:,:-1]), "state")
+    compare_paths(np.array(u_sim), np.squeeze(u_star[:,:-1]), "action")
     compare_V(ppo.policy.critic,A,B,Q,R,K,T,gamma,alpha)
     
     
