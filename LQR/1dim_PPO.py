@@ -7,8 +7,6 @@ import lqr_control as control
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# rewards in this case are actually costs - we are minimizing the actor/critic costs
-
 def simulate(A,B,policy,x0,u0,T):
     """
     simulate trajectory based on policy learned by PPO agent
@@ -67,14 +65,14 @@ class Memory:
         self.actions = []
         self.states = []
         self.logprobs = []
-        self.rewards = []
+        self.costs = []
         self.is_terminals = []
     
     def clear_memory(self):
         del self.actions[:]
         del self.states[:]
         del self.logprobs[:]
-        del self.rewards[:]
+        del self.costs[:]
         del self.is_terminals[:]
 
 # "custom" activation function for pytorch - compatible with autograd
@@ -133,16 +131,16 @@ class ActorCritic(nn.Module):
         
         return action.detach()
     
-    def evaluate(self, state, action, alpha):
-        action_means = self.actor(state)
+    def evaluate(self, states, actions, alpha):
+        action_means = self.actor(states)
         cov_mat = torch.diag_embed(self.action_var).to(device)
         
         distribs = [MultivariateNormal(mu, cov_mat) for mu in action_means]
 
-        action_logprobs = torch.tensor([dist.log_prob(x) for x,dist in zip(action,distribs)], requires_grad=True)
-        state_value = alpha*self.critic(state)
+        action_logprobs = torch.tensor([dist.log_prob(x) for x,dist in zip(actions,distribs)], requires_grad=True)
+        state_values = alpha*self.critic(states)
         
-        return action_logprobs, torch.squeeze(state_value)
+        return action_logprobs, torch.squeeze(state_values)
 
 class PPO:
     def __init__(self, state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, double=False):
@@ -167,18 +165,18 @@ class PPO:
         return self.policy_old.act(state, memory).cpu().data.numpy().flatten()
     
     def update_actor(self, memory):   
-        # Monte Carlo estimate of state rewards:
-        rewards = []
-        discounted_reward = 0
-        for reward, is_terminal in zip(reversed(memory.rewards), reversed(memory.is_terminals)):
+        # Monte Carlo estimate of state costs:
+        costs = []
+        discounted_cost = 0
+        for cost, is_terminal in zip(reversed(memory.costs), reversed(memory.is_terminals)):
             if is_terminal:
-                discounted_reward = 0
-            discounted_reward = reward + (self.gamma * discounted_reward)
-            rewards.insert(0, discounted_reward)
+                discounted_cost = 0
+            discounted_cost = cost + (self.gamma * discounted_cost)
+            costs.insert(0, discounted_cost)
         
-        # Normalizing the rewards:
-        rewards = torch.tensor(rewards).to(device)
-        rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
+        # Normalizing the costs:
+        costs = torch.tensor(costs).to(device)
+        costs = (costs - costs.mean()) / (costs.std() + 1e-8)
         
         # convert list to tensor
         old_states = torch.stack(memory.states).to(device).detach()
@@ -194,9 +192,9 @@ class PPO:
             ratios = torch.exp(logprobs - old_logprobs)
                 
             # Finding Surrogate Loss:
-            advantages = rewards - state_values.detach()
+            advantages = state_values.detach() - costs # if adv > 0, current actions were good -> make them more likely
             surr1 = ratios * advantages
-            surr2 = (torch.ones_like(advantages) - self.eps_clip * torch.sign(advantages)) * advantages
+            surr2 = (torch.ones_like(advantages) + self.eps_clip * torch.sign(advantages)) * advantages
             actor_loss = torch.min(surr1, surr2)
             
             # take gradient step
@@ -210,22 +208,22 @@ class PPO:
     def update_critic(self, memory):   
         states = torch.stack(memory.states).to(device).detach()
         
-        rewards = []
-        discounted_reward = 0
-        for reward, is_terminal in zip(reversed(memory.rewards), reversed(memory.is_terminals)):
+        costs = []
+        discounted_cost = 0
+        for cost, is_terminal in zip(reversed(memory.costs), reversed(memory.is_terminals)):
             if is_terminal:
-                discounted_reward = 0
-            discounted_reward = reward + (self.gamma * discounted_reward)
-            rewards.insert(0, discounted_reward)
+                discounted_cost = 0
+            discounted_cost = cost + (self.gamma * discounted_cost)
+            costs.insert(0, discounted_cost)
         
-        rewards = torch.tensor(rewards).to(device)
-        rewards = self.alpha*(rewards - rewards.mean()) / (rewards.std() + 1e-5)
+        costs = torch.tensor(costs).to(device)
+        costs = self.alpha*(costs - costs.mean()) / (costs.std() + 1e-5)
         
         # Optimize critic for K epochs:
         for _ in range(self.K_epochs):
             state_values = self.alpha*torch.squeeze(self.policy.critic(states))
             
-            critic_loss = 0.5/(self.alpha**2)*self.MseLoss(state_values,rewards)
+            critic_loss = 0.5/(self.alpha**2)*self.MseLoss(state_values,costs)
             
             # take gradient step
             self.critic_optimizer.zero_grad()
@@ -243,11 +241,11 @@ if __name__ == '__main__':
     
     state_dim = 1
     action_dim = 1
-    log_interval = 500           # print avg reward in the interval
+    log_interval = 500           # print avg cost in the interval
     max_episodes = 10000         # max training episodes
     max_timesteps = 100          # max timesteps in one episode
     
-#    solved_reward = None
+#    solved_cost = None
     
     n_latent_var = 64            # number of variables in hidden laye
     update_timestep = 400        # update policy every n timesteps
@@ -261,7 +259,7 @@ if __name__ == '__main__':
     critic_lr = 0.001          
     betas = (0.9, 0.999)
     
-    random_seed = 1
+    random_seed = None
     #############################################
     
     if random_seed:
@@ -273,11 +271,11 @@ if __name__ == '__main__':
     K, _, _ = control.dlqr(A,B,Q,R)
     
     memory = Memory()
-    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, double=True)
+    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, double=False)
     print("actor lr: {}, critic lr: {}, betas: {}".format(actor_lr,critic_lr,betas))  
     
     # logging variables
-    running_reward = 0
+    running_cost = 0
     avg_length = 0
     time_step = 0
     
@@ -290,15 +288,16 @@ if __name__ == '__main__':
             # Running policy_old:
             action = ppo.select_action(state, memory)
             
-            reward = np.matmul(state,np.matmul(Q,state)) + np.matmul(np.array(action).reshape(1,1),np.matmul(R,np.array(action).reshape(1,1)))
+            cost = np.matmul(state,np.matmul(Q,state)) + np.matmul(np.array(action).reshape(1,1),np.matmul(R,np.array(action).reshape(1,1)))
             state = np.matmul(A,state) + np.matmul(B,np.array(action).reshape(1,1))
             
             if np.abs(state) > 10:
                 done = True
+                cost = np.array([[1000.]])
             
-#            print(reward,t)
-            # Saving reward and is_terminals:
-            memory.rewards.append(reward.item())
+#            print(cost,t)
+            # Saving cost and is_terminals:
+            memory.costs.append(cost.item())
             memory.is_terminals.append(done)
             
             # update if its time
@@ -308,14 +307,14 @@ if __name__ == '__main__':
                 memory.clear_memory()
                 time_step = 0
                 
-            running_reward += reward.item()
+            running_cost += cost.item()
             if done:
                 break
             
         avg_length += t
         
-#        #stop training if avg_reward > solved_reward
-#        if running_reward > (log_interval*solved_reward):
+#        #stop training if avg_cost > solved_cost
+#        if running_cost > (log_interval*solved_cost):
 #            print("########## Solved! ##########")
 #            torch.save(ppo.policy.state_dict(), './PPO_continuous_solved_{}.pth'.format("1dim_LQR"))
 #            break
@@ -326,14 +325,14 @@ if __name__ == '__main__':
             plt.close("all")
             
             avg_length = avg_length/log_interval
-            running_reward = running_reward/log_interval
+            running_cost = running_cost/log_interval
             
-            print('Episode {} \t Avg length: {:.2f} \t Avg reward: {:.2f}'.format(i_episode, avg_length, running_reward))
-            running_reward = 0
+            print('Episode {} \t Avg length: {:.2f} \t Avg cost: {:.2f}'.format(i_episode, avg_length, running_cost))
+            running_cost = 0
             avg_length = 0
             
     # random init to compare how the two controls act
-    x0 = np.random.randn(1,)
+    x0 = np.random.uniform(-5,5,(1,))
     u0 = np.zeros((1,))
     T = 50
     
