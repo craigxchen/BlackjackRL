@@ -86,12 +86,11 @@ class Quadratic(nn.Module):
         return x**2
 
 class ActorCritic(nn.Module):
-    def __init__(self, state_dim, action_dim, n_latent_var, action_std, zero=False, double=False):
+    def __init__(self, state_dim, action_dim, n_latent_var, action_std, double=False):
         super(ActorCritic, self).__init__()
-        # action mean range -1 to 1
         self.actor =  nn.Sequential(
                 nn.Linear(state_dim, n_latent_var, bias=False),
-#                nn.ReLU(),
+                nn.ReLU(),
                 nn.Linear(n_latent_var, action_dim, bias=False),
                 )
         # critic
@@ -101,16 +100,6 @@ class ActorCritic(nn.Module):
                 nn.Linear(n_latent_var, 1, bias=False)
                 )
         self.action_var = torch.full((action_dim,), action_std*action_std).to(device)
-        
-        if zero: # zero the last layer
-            with torch.no_grad():                
-                self.critic[-1].weight.fill_(0.0)
-                if self.critic[-1].bias is not None:
-                    self.critic[-1].bias.fill_(0.0)
-                
-                self.actor[-1].weight.fill_(0.0)
-                if self.actor[-1].bias is not None:
-                    self.actor[-1].bias.fill_(0.0)
                     
         if double:
             with torch.no_grad():
@@ -144,34 +133,31 @@ class ActorCritic(nn.Module):
         
         return action.detach()
     
-    def evaluate(self, state, action, alpha):   
-        action_mean = torch.squeeze(self.actor(state))
+    def evaluate(self, state, action, alpha):
+        action_means = self.actor(state)
+        cov_mat = torch.diag_embed(self.action_var).to(device)
         
-        action_var = self.action_var.expand_as(action_mean)
-        cov_mat = torch.diag_embed(action_var).to(device)
-        
-        dist = MultivariateNormal(action_mean, cov_mat)
-        
-        action_logprobs = dist.log_prob(torch.squeeze(action))
-        dist_entropy = dist.entropy()
+        distribs = [MultivariateNormal(mu, cov_mat) for mu in action_means]
+
+        action_logprobs = torch.tensor([dist.log_prob(x) for x,dist in zip(action,distribs)], requires_grad=True)
         state_value = alpha*self.critic(state)
         
-        return action_logprobs, torch.squeeze(state_value), dist_entropy
+        return action_logprobs, torch.squeeze(state_value)
 
 class PPO:
-    def __init__(self, state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, zero=False, double=False):
+    def __init__(self, state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, double=False):
         self.betas = betas
         self.gamma = gamma
         self.alpha = alpha
         self.eps_clip = eps_clip
         self.K_epochs = K_epochs
         
-        self.policy = ActorCritic(state_dim, action_dim, n_latent_var, action_std, zero, double).to(device)
+        self.policy = ActorCritic(state_dim, action_dim, n_latent_var, action_std, double).to(device)
         
         self.actor_optimizer = torch.optim.Adam(self.policy.actor.parameters(), lr=actor_lr, betas=betas)
         self.critic_optimizer = torch.optim.Adam(self.policy.critic.parameters(), lr=critic_lr, betas=betas)
         
-        self.policy_old = ActorCritic(state_dim, action_dim, n_latent_var, action_std, zero, double).to(device)
+        self.policy_old = ActorCritic(state_dim, action_dim, n_latent_var, action_std, double).to(device)
         self.policy_old.load_state_dict(self.policy.state_dict())
         
         self.MseLoss = nn.MSELoss()
@@ -202,16 +188,15 @@ class PPO:
         # Optimize policy for K epochs:
         for _ in range(self.K_epochs):
             # Evaluating old actions and values :
-            logprobs, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions, self.alpha)
+            logprobs, state_values = self.policy.evaluate(old_states, old_actions, self.alpha)
             
-            # Finding the ratio (pi_theta / pi_theta__old): clamp the logprobs to prevent NaN's
-            ratios = torch.exp(torch.clamp(logprobs - old_logprobs, -1, 1))
-#            ratios = torch.exp(logprobs - old_logprobs)
+            # Finding the ratio (pi_theta / pi_theta__old):
+            ratios = torch.exp(logprobs - old_logprobs)
                 
             # Finding Surrogate Loss:
             advantages = rewards - state_values.detach()
             surr1 = ratios * advantages
-            surr2 = (torch.ones_like(advantages) + self.eps_clip * torch.sign(advantages)) * advantages
+            surr2 = (torch.ones_like(advantages) - self.eps_clip * torch.sign(advantages)) * advantages
             actor_loss = torch.min(surr1, surr2)
             
             # take gradient step
@@ -258,7 +243,7 @@ if __name__ == '__main__':
     
     state_dim = 1
     action_dim = 1
-    log_interval = 400           # print avg reward in the interval
+    log_interval = 500           # print avg reward in the interval
     max_episodes = 10000         # max training episodes
     max_timesteps = 100          # max timesteps in one episode
     
@@ -267,12 +252,12 @@ if __name__ == '__main__':
     n_latent_var = 64            # number of variables in hidden laye
     update_timestep = 400        # update policy every n timesteps
     action_std = 0.1             # constant std for action distribution (Multivariate Normal)
-    K_epochs = 80                # update policy for K epochs
+    K_epochs = 10                # update policy for K epochs
     eps_clip = 0.2               # clip parameter for PPO
     gamma = 0.99                 # discount factor
     alpha = 100
                                  # parameters for Adam optimizer
-    actor_lr = 0.0003        
+    actor_lr = 0.001        
     critic_lr = 0.001          
     betas = (0.9, 0.999)
     
@@ -284,8 +269,11 @@ if __name__ == '__main__':
         torch.manual_seed(random_seed)
         np.random.seed(random_seed)
     
+    # Optimal control for comparison
+    K, _, _ = control.dlqr(A,B,Q,R)
+    
     memory = Memory()
-    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, zero=False, double=True)
+    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, double=True)
     print("actor lr: {}, critic lr: {}, betas: {}".format(actor_lr,critic_lr,betas))  
     
     # logging variables
@@ -295,7 +283,7 @@ if __name__ == '__main__':
     
     # training loop
     for i_episode in range(1, max_episodes+1):
-        state = np.random.randn(1).reshape(1,1)
+        state = np.random.uniform(-5,5,(1,1))
         done = False
         for t in range(max_timesteps):
             time_step +=1
@@ -307,7 +295,6 @@ if __name__ == '__main__':
             
             if np.abs(state) > 10:
                 done = True
-                reward = np.array(1000).reshape(1,1)
             
 #            print(reward,t)
             # Saving reward and is_terminals:
@@ -327,7 +314,7 @@ if __name__ == '__main__':
             
         avg_length += t
         
-        # stop training if avg_reward > solved_reward
+#        #stop training if avg_reward > solved_reward
 #        if running_reward > (log_interval*solved_reward):
 #            print("########## Solved! ##########")
 #            torch.save(ppo.policy.state_dict(), './PPO_continuous_solved_{}.pth'.format("1dim_LQR"))
@@ -335,6 +322,9 @@ if __name__ == '__main__':
             
         # logging
         if i_episode % log_interval == 0:
+            # close all figures from previous logging round
+            plt.close("all")
+            
             avg_length = avg_length/log_interval
             running_reward = running_reward/log_interval
             
@@ -342,9 +332,7 @@ if __name__ == '__main__':
             running_reward = 0
             avg_length = 0
             
-    
-    K, _, _ = control.dlqr(A,B,Q,R)
-    
+    # random init to compare how the two controls act
     x0 = np.random.randn(1,)
     u0 = np.zeros((1,))
     T = 50
@@ -355,5 +343,9 @@ if __name__ == '__main__':
     compare_paths(np.array(x_sim), np.squeeze(x_star[:,:-1]), "state")
     compare_paths(np.array(u_sim), np.squeeze(u_star[:,:-1]), "action")
     compare_V(ppo.policy.critic,A,B,Q,R,K,T,gamma,alpha)
+            
+            
+    
+
     
     
