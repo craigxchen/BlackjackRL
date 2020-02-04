@@ -192,9 +192,13 @@ class PPO:
             ratios = torch.exp(logprobs - old_logprobs)
                 
             # Finding Surrogate Loss:
-            advantages = state_values.detach() - costs # if adv > 0, current actions were good -> make them more likely
+            advantages = costs - state_values.detach()
             surr1 = ratios * advantages
-            surr2 = (torch.ones_like(advantages) + self.eps_clip * torch.sign(advantages)) * advantages
+            # If adv >= 0, to minimize loss, we want to decrease likelyhood of action
+            # If adv < 0, to minimize loss, we want to increase likelyhood of action
+            # With the clipped objective, we argue that decreasing by more than 1-eps, 
+            # or increasing by more than 1+eps is unnecessary. 
+            surr2 = (torch.ones_like(advantages) - self.eps_clip * torch.sign(advantages)) * advantages
             actor_loss = torch.min(surr1, surr2)
             
             # take gradient step
@@ -271,7 +275,7 @@ if __name__ == '__main__':
     K, _, _ = control.dlqr(A,B,Q,R)
     
     memory = Memory()
-    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, double=False)
+    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, double=True)
     print("actor lr: {}, critic lr: {}, betas: {}".format(actor_lr,critic_lr,betas))  
     
     # logging variables
