@@ -133,11 +133,13 @@ class ActorCritic(nn.Module):
     
     def evaluate(self, states, actions, alpha):
         action_means = self.actor(states)
-        cov_mat = torch.diag_embed(self.action_var).to(device)
         
-        distribs = [MultivariateNormal(mu, cov_mat) for mu in action_means]
-
-        action_logprobs = torch.tensor([dist.log_prob(x) for x,dist in zip(actions,distribs)], requires_grad=True)
+        action_var = self.action_var.expand_as(action_means)
+        cov_mat = torch.diag_embed(action_var).to(device)
+        
+        dist = MultivariateNormal(action_means, cov_mat)
+        
+        action_logprobs = dist.log_prob(actions)
         state_values = alpha*self.critic(states)
         
         return action_logprobs, torch.squeeze(state_values)
@@ -194,11 +196,7 @@ class PPO:
             # Finding Surrogate Loss:
             advantages = costs - state_values.detach()
             surr1 = ratios * advantages
-            # If adv >= 0, to minimize loss, we want to decrease likelyhood of action
-            # If adv < 0, to minimize loss, we want to increase likelyhood of action
-            # With the clipped objective, we argue that decreasing by more than 1-eps, 
-            # or increasing by more than 1+eps is unnecessary. 
-            surr2 = (torch.ones_like(advantages) - self.eps_clip * torch.sign(advantages)) * advantages
+            surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
             actor_loss = torch.min(surr1, surr2)
             
             # take gradient step
@@ -246,24 +244,24 @@ if __name__ == '__main__':
     state_dim = 1
     action_dim = 1
     log_interval = 500           # print avg cost in the interval
-    max_episodes = 10000         # max training episodes
-    max_timesteps = 100          # max timesteps in one episode
+    max_episodes = 50000         # max training episodes
+    max_timesteps = 10           # max timesteps in one episode
     
 #    solved_cost = None
     
     n_latent_var = 64            # number of variables in hidden laye
-    update_timestep = 400        # update policy every n timesteps
+    update_timestep = 50         # update policy every n timesteps
     action_std = 0.1             # constant std for action distribution (Multivariate Normal)
-    K_epochs = 10                # update policy for K epochs
+    K_epochs = 50                # update policy for K epochs
     eps_clip = 0.2               # clip parameter for PPO
     gamma = 0.99                 # discount factor
     alpha = 100
                                  # parameters for Adam optimizer
-    actor_lr = 0.001        
-    critic_lr = 0.001          
+    actor_lr = 0.0003        
+    critic_lr = 0.01          
     betas = (0.9, 0.999)
     
-    random_seed = None
+    random_seed = 1
     #############################################
     
     if random_seed:
@@ -275,7 +273,7 @@ if __name__ == '__main__':
     K, _, _ = control.dlqr(A,B,Q,R)
     
     memory = Memory()
-    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, double=True)
+    ppo = PPO(state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, double=False)
     print("actor lr: {}, critic lr: {}, betas: {}".format(actor_lr,critic_lr,betas))  
     
     # logging variables
@@ -295,11 +293,6 @@ if __name__ == '__main__':
             cost = np.matmul(state,np.matmul(Q,state)) + np.matmul(np.array(action).reshape(1,1),np.matmul(R,np.array(action).reshape(1,1)))
             state = np.matmul(A,state) + np.matmul(B,np.array(action).reshape(1,1))
             
-            if np.abs(state) > 10:
-                done = True
-                cost = np.array([[1000.]])
-            
-#            print(cost,t)
             # Saving cost and is_terminals:
             memory.costs.append(cost.item())
             memory.is_terminals.append(done)
@@ -325,9 +318,6 @@ if __name__ == '__main__':
             
         # logging
         if i_episode % log_interval == 0:
-            # close all figures from previous logging round
-            plt.close("all")
-            
             avg_length = avg_length/log_interval
             running_cost = running_cost/log_interval
             
