@@ -241,7 +241,7 @@ class PPO:
         for _ in range(self.K_epochs):
             state_values = self.alpha*torch.squeeze(self.policy.critic(states))
             
-            critic_loss = 0.5*self.MseLoss(state_values,costs)
+            critic_loss = 0.5/(alpha**2)*self.MseLoss(state_values,costs)
             
             # take gradient step
             self.critic_optimizer.zero_grad()
