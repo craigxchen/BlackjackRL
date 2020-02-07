@@ -3,9 +3,6 @@ import torch.nn as nn
 from torch.distributions import MultivariateNormal
 import numpy as np
 import matplotlib.pyplot as plt
-
-import sys, os
-sys.path.append(os.path.abspath(os.path.join("..\LQR")))
 import lqr_control as control
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -244,7 +241,7 @@ class PPO:
         for _ in range(self.K_epochs):
             state_values = self.alpha*torch.squeeze(self.policy.critic(states))
             
-            critic_loss = 0.5/(self.alpha**2)*self.MseLoss(state_values,costs)
+            critic_loss = 0.5*self.MseLoss(state_values,costs)
             
             # take gradient step
             self.critic_optimizer.zero_grad()
@@ -263,7 +260,7 @@ if __name__ == '__main__':
     state_dim = 1
     action_dim = 1
     log_interval = 500           # print avg cost in the interval
-    max_episodes = 500000        # max training episodes
+    max_episodes = 1000000        # max training episodes
     max_timesteps = 10           # max timesteps in one episode
     
     solved_cost = None
@@ -271,14 +268,14 @@ if __name__ == '__main__':
     n_latent_var = 64            # number of variables in hidden laye
     update_timestep = 50         # update policy every n timesteps
     action_std = 0.1             # constant std for action distribution (Multivariate Normal)
-    K_epochs = 50                # update policy for K epochs
+    K_epochs = 10                # update policy for K epochs
     eps_clip = 0.2               # clip parameter for PPO
     gamma = 0.99                 # discount factor
     alpha = 100
-                                 # parameters for Adam optimizer
+                                 
     actor_lr = 0.0003        
-    critic_lr = 0.01          
-    betas = (0.9, 0.999)
+    critic_lr = 0.001          
+    betas = (0.9, 0.999)         # parameters for Adam optimizer
     
     random_seed = None
     #############################################
@@ -356,9 +353,3 @@ if __name__ == '__main__':
     compare_paths(np.array(u_sim), np.squeeze(u_star[:,:-1]), "action")
     compare_V(ppo.policy.critic,A,B,Q,R,K,T,gamma,alpha)
     compare_P(ppo.policy.actor,K)
-            
-            
-    
-
-    
-    
