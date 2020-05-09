@@ -30,33 +30,39 @@ print(f"gamma = {gamma}")
 while np.abs(A+np.matmul(B,K_0)).item() >= 1:
     K, P = dlqr(A,B,Q,R,gamma)
     print(f"K' = {K}")
-    
+
     print("optimal to initial:"
         f"{np.abs(A+np.matmul(B,K)).item()/np.abs(A+np.matmul(B,K_0)).item()}")
-    
+
     print("estimate bound:"
           f"{A.item() * np.sqrt(R.item()) / (2 * B.item() * np.sqrt(P.item()))}")
-    
+
     print("\n")
-    
+
     K_0 = np.copy(K)
-    
+
     gamma = min(1/((A+np.matmul(B,K_0))**2).item(),1)
     print(f"gamma = {gamma}")
-    
-   
-    
+
+
+
 K_star, _ = dlqr(A,B,Q,R)
 print(f"K* = {K_star}")
-        
+
 
 x = np.linspace(0.01,1,100)
-y = np.array([A.item()*np.sqrt(R.item())/2/B.item()/np.sqrt(np.abs(scipy.linalg.solve_discrete_are(np.sqrt(gamma)*A, B, Q, R/gamma))).item() 
+y = np.array([A.item()*np.sqrt(R.item())/2/B.item()/np.sqrt(np.abs(scipy.linalg.solve_discrete_are(np.sqrt(gamma)*A, B, Q, R/gamma))).item()
     for gamma in x]).squeeze()
+z = np.array([A.item()*R.item()/(R.item() + gamma*B.item()**2*(np.abs(scipy.linalg.solve_discrete_are(np.sqrt(gamma)*A, B, Q, R/gamma))).item())
+    for gamma in x]).squeeze()
+w = np.array([1/np.sqrt(gamma) for gamma in x]).squeeze()
+#v = np.array([np.abs(A + dlqr(A,B,Q,R,gamma)[0]*B) for gamma in x]).squeeze()
 
 fig, ax = plt.subplots()
 
-ax.plot(x,y,'k-')
+ax.plot(x,z,'k-')
+ax.plot(x,w,'r-')
+#ax.plot(x,v,'b-')
 
 ax.set_xlabel('gamma')
 ax.set_ylabel('P')
