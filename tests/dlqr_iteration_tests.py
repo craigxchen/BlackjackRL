@@ -1,6 +1,5 @@
 import numpy as np
 import scipy.linalg
-import scipy.sparse.linalg as sp
 import matplotlib.pyplot as plt
 
 def dlqr(A,B,Q,R,gamma=1):
@@ -32,11 +31,15 @@ print(f"K = {K}")
 gamma = min(1/((np.linalg.eig(A+np.matmul(B,K))[0][0].real)**2),1)
 print(f"gamma = {gamma}")
 
+print("\n")
+
 while np.linalg.eig(A+np.matmul(B,K))[0][0].real**2 >= 1:
     K, P = dlqr(A,B,Q,R,gamma)
     print(f"K' = {K}")
     
-    print(f"optimal to initial: {sp.svds(A+np.matmul(B,K),1)[1]/sp.svds(A+np.matmul(B,K_0),1)[1]}")
+    print(f"optimal to initial: {np.abs(np.linalg.eig(A+np.matmul(B,K))[0][0].real/np.linalg.eig(A+np.matmul(B,K_0))[0][0].real)}")
+    
+    print("\n")
     
     gamma = min(1/(np.linalg.eig(A+np.matmul(B,K))[0][0].real**2),1)
     print(f"gamma = {gamma}")
