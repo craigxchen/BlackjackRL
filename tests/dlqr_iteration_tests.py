@@ -28,20 +28,20 @@ K = np.random.randn(DIM,DIM)
 K_0 = np.copy(K)
 
 print(f"K = {K}")
-gamma = min(1/((np.linalg.eig(A+np.matmul(B,K))[0][0].real)**2),1)
+gamma = min(1/max(np.linalg.eig(A+np.matmul(B,K))[0].real)**2,1)
 print(f"gamma = {gamma}")
 
 print("\n")
 
-while np.linalg.eig(A+np.matmul(B,K))[0][0].real**2 >= 1:
+while max(np.linalg.eig(A+np.matmul(B,K))[0].real)**2 >= 1:
     K, P = dlqr(A,B,Q,R,gamma)
     print(f"K' = {K}")
     
-    print(f"optimal to initial: {np.abs(np.linalg.eig(A+np.matmul(B,K))[0][0].real/np.linalg.eig(A+np.matmul(B,K_0))[0][0].real)}")
+    print(f"optimal to initial: {np.abs(max(np.linalg.eig(A+np.matmul(B,K))[0].real)/max(np.linalg.eig(A+np.matmul(B,K_0))[0].real))}")
     
     print("\n")
     
-    gamma = min(1/(np.linalg.eig(A+np.matmul(B,K))[0][0].real**2),1)
+    gamma = min(1/(max(np.linalg.eig(A+np.matmul(B,K))[0].real))**2,1)
     print(f"gamma = {gamma}")
     K_0 = np.copy(K)
     
@@ -52,7 +52,7 @@ print(f"K* = {K_star}")
 x = np.linspace(0.01,1,100)
 
 w = np.array([1/np.sqrt(gamma) for gamma in x]).squeeze()
-v = np.array([np.abs(np.linalg.eig(A + np.matmul(B,dlqr(A,B,Q,R,gamma)[0]))[0][0].real) for gamma in x]).squeeze()
+v = np.array([np.abs(max(np.linalg.eig(A+np.matmul(B,dlqr(A,B,Q,R,gamma)[0]))[0].real)) for gamma in x]).squeeze()
 
 fig, ax = plt.subplots()
 
