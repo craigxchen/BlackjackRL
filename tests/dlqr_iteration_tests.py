@@ -17,11 +17,12 @@ def dlqr(A, B, Q, R, gamma=1):
 
 
 DIM = 3
-# SEED = 9
-# np.random.seed(SEED)
+#SEED = 11
+#np.random.seed(SEED)
 
 A = np.random.randn(DIM, DIM)
 B = np.random.randn(DIM, DIM)
+# B = np.identity(DIM)
 B = np.identity(DIM)
 Q = np.identity(DIM)
 R = np.identity(DIM)
@@ -30,7 +31,7 @@ K = np.random.randn(DIM, DIM)
 K_0 = np.copy(K)
 
 print(f"K = {K}")
-gamma = min(1 / max(np.linalg.eig(A + np.matmul(B, K))[0].real) ** 2, 1)
+gamma = min(1 / (max(np.linalg.eig(A + np.matmul(B, K))[0].real)) ** 2, 1)
 print(f"gamma = {gamma}")
 
 print("\n")
@@ -39,8 +40,11 @@ while max(np.linalg.eig(A + np.matmul(B, K))[0].real) ** 2 >= 1:
     K, P = dlqr(A, B, Q, R, gamma)
     print(f"K' = {K}")
 
-    print(
-        f"optimal to initial: {np.abs(max(np.linalg.eig(A + np.matmul(B, K))[0].real) / max(np.linalg.eig(A + np.matmul(B, K_0))[0].real))}")
+    print("optimal to initial:"
+          f"{np.abs(max(np.linalg.eig(A + np.matmul(B, K))[0].real) / max(np.linalg.eig(A + np.matmul(B, K_0))[0].real))}")
+
+    print("estimate bound:"
+          f"{np.sqrt(1 - min(np.linalg.eig(Q + np.matmul(np.matmul(K.T, R), K))[0].real) / max(np.linalg.eig(P)[0].real))}")
 
     print("\n")
 
@@ -53,14 +57,19 @@ print(f"K* = {K_star}")
 
 x = np.linspace(0.01, 1, 100)
 
-w = np.array([1 / np.sqrt(gamma) for gamma in x]).squeeze()
 v = np.array(
-    [np.abs(max(np.linalg.eig(A + np.matmul(B, dlqr(A, B, Q, R, gamma)[0]))[0].real)) for gamma in x]).squeeze()
+    [np.sqrt(gamma) * np.abs(max(np.linalg.eig(A + np.matmul(B, dlqr(A, B, Q, R, gamma)[0]))[0].real)) for gamma in x]).squeeze()
+temp = []
+for gamma in x:
+    k, p = dlqr(A, B, Q, R, gamma)
+    temp.append(np.sqrt(
+        (max(np.linalg.eig(p)[0].real) - min(np.linalg.eig(Q + np.matmul(np.matmul(k.T, R), k))[0].real)) / max(np.linalg.eig(p)[0].real)))
+y = np.array(temp).squeeze()
 
 fig, ax = plt.subplots()
 
-ax.plot(x, w, 'r-', label="initial")
-ax.plot(x, v, 'b-', label="new optimal")
+ax.plot(x, v, 'b-', label="true ratio")
+ax.plot(x, y, 'k-', label="esimate")
 
 ax.set_xlabel('gamma')
 ax.set_ylabel("spectral radius")
