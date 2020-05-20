@@ -232,11 +232,11 @@ max_timesteps = 10            # max timesteps in one episode
 solved_cost = None
 
 n_latent_var = 1             # number of variables in hidden layer
-tau = 0.05                   # temperature constant
+tau = 1.00                   # temperature constant
 K_epochs = 10                # update policy for K epochs
 gamma = 1.00                 # discount factor
                          
-lr = 0.001        
+lr = 0.1        
 betas = (0.9, 0.999)         # parameters for Adam optimizer
 
 random_seed = 1
@@ -281,6 +281,8 @@ for i_episode in range(1, max_episodes+1):
     # logging
     if i_episode % log_interval == 0:
         running_cost = running_cost/log_interval
+        
+        print(list(sac.policy.agent.parameters())[0].grad)
         
         print('Episode {} \t Avg cost: {:.2f}'.format(i_episode, running_cost))
         running_cost = 0
