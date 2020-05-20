@@ -113,9 +113,9 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
         self.agent = nn.Sequential(
-                nn.Linear(state_dim + action_dim, n_latent_var, bias=True),
+                nn.Linear(state_dim + action_dim, n_latent_var, bias=False),
                 Quadratic(),
-                nn.Linear(n_latent_var, 1, bias=True)
+#                nn.Linear(n_latent_var, 1, bias=False)
                 )
         
         self.tau = tau
@@ -126,17 +126,39 @@ class Model(nn.Module):
         raise NotImplementedError
     
     def act(self, state, memory):
-        noise = torch.rand((self.action_dim,1))
-        action = torch.exp(-self.agent(torch.cat((state, noise),dim=1)) / self.tau)
+        action_mean = -state * self.agent[0].weight[0][0] / self.agent[0].weight[0][1]
+        
+        action_var = 0.5 * self.tau / self.agent[0].weight[0][1]*self.agent[0].weight[0][1]
+        action_var = action_var.expand_as(action_mean)
+        
+        cov_mat = torch.diag_embed(action_var).to(device)
+        
+        dist = MultivariateNormal(action_mean, cov_mat)
+        action = dist.sample()
+        action_logprob = dist.log_prob(action)
 
         memory.states.append(state)
         memory.actions.append(action)
+        memory.logprobs.append(action_logprob)
         
         return action.detach()
     
     def evaluate(self, states, actions):
-        action_values = self.agent(torch.cat((states, actions),dim=1).squeeze())
-        return torch.squeeze(action_values)
+        action_means = -states * self.agent[0].weight[0][0] / self.agent[0].weight[0][1]
+        
+        action_var = 0.5 * self.tau / self.agent[0].weight[0][1]*self.agent[0].weight[0][1]
+        action_var = action_var.expand_as(action_means)
+        
+        cov_mat = torch.diag_embed(action_var).to(device)
+        
+        dist = MultivariateNormal(action_means, cov_mat)
+        
+        action_logprobs = dist.log_prob(actions)
+        action_values = self.agent(torch.cat((states,actions),dim=1).squeeze())
+        dist_entropy = dist.entropy()
+        
+        return action_logprobs, torch.squeeze(action_values), dist_entropy
+        
 
 class SAC:
     def __init__(self, state_dim, action_dim, n_latent_var, tau, lr, betas, gamma, K_epochs):
@@ -179,12 +201,12 @@ class SAC:
         # Optimize policy for K epochs:
         for _ in range(self.K_epochs):
             # Evaluating old actions and values :
-            action_values = self.policy.evaluate(old_states, old_actions)
+            logprobs, action_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
                 
             # Finding Loss:
-            actor_loss = -self.tau * torch.log(old_actions)
+            actor_loss = logprobs - action_values
             critic_loss = 0.5 * self.MseLoss(action_values , costs)
-            loss = actor_loss + critic_loss
+            loss = actor_loss + critic_loss - dist_entropy / self.tau
             
             # take gradient step
             self.optimizer.zero_grad()
@@ -209,7 +231,7 @@ max_timesteps = 10            # max timesteps in one episode
 
 solved_cost = None
 
-n_latent_var = 10             # number of variables in hidden layer
+n_latent_var = 1             # number of variables in hidden layer
 tau = 0.05                   # temperature constant
 K_epochs = 10                # update policy for K epochs
 gamma = 1.00                 # discount factor
@@ -234,7 +256,7 @@ running_cost = 0
 
 # training loop
 for i_episode in range(1, max_episodes+1):
-    state = 10*np.random.randn(1,1)
+    state = np.random.randn(1,1)
     done = False
     for t in range(max_timesteps):
         # Running policy_old:
