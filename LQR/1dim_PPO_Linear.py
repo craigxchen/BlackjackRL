@@ -117,9 +117,6 @@ class ActorCritic(nn.Module):
                 nn.Linear(n_latent_var, 1, bias=False)
                 )
         self.action_var = torch.full((action_dim,), action_std*action_std).to(device)
-              
-        with torch.no_grad():
-            self.actor[0].weight = nn.Parameter(torch.tensor([[1.]]))
         
         if double:
             with torch.no_grad():
@@ -260,12 +257,12 @@ if __name__ == '__main__':
     state_dim = 1
     action_dim = 1
     log_interval = 500           # print avg cost in the interval
-    max_episodes = 1000000        # max training episodes
+    max_episodes = 100000        # max training episodes
     max_timesteps = 10           # max timesteps in one episode
     
     solved_cost = None
     
-    n_latent_var = 64            # number of variables in hidden laye
+    n_latent_var = 1             # number of variables in hidden laye
     update_timestep = 50         # update policy every n timesteps
     action_std = 0.1             # constant std for action distribution (Multivariate Normal)
     K_epochs = 10                # update policy for K epochs
@@ -290,7 +287,7 @@ if __name__ == '__main__':
     
     memory = Memory()
     ppo = PPO(state_dim, action_dim, n_latent_var, action_std, actor_lr, critic_lr, betas, alpha, gamma, K_epochs, eps_clip, double=False)
-    print("actor lr: {}, critic lr: {}, betas: {}".format(actor_lr,critic_lr,betas))  
+    print(f"device: {device}, actor lr: {actor_lr}, critic lr: {critic_lr}, betas: {betas}")  
     
     # logging variables
     running_cost = 0
