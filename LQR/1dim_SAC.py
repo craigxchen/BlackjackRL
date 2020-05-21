@@ -8,7 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import lqr_control as control
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 def simulate(A,B,policy,x0,T):
     """
@@ -115,7 +116,7 @@ class Model(nn.Module):
         self.agent = nn.Sequential(
                 nn.Linear(state_dim + action_dim, n_latent_var, bias=False),
                 Quadratic(),
-#                nn.Linear(n_latent_var, 1, bias=False)
+                # nn.Linear(n_latent_var, 1, bias=False)
                 )
         
         self.tau = tau
@@ -126,9 +127,10 @@ class Model(nn.Module):
         raise NotImplementedError
     
     def act(self, state, memory):
-        action_mean = -state * self.agent[0].weight[0][0] / self.agent[0].weight[0][1]
+        action_mean = -state * self.agent[0].weight[:,0] / self.agent[0].weight[:,1]
         
-        action_var = 0.5 * self.tau / self.agent[0].weight[0][1]*self.agent[0].weight[0][1]
+        # action_var = torch.full((action_dim,), 0.5 * self.tau)
+        action_var = 0.5 * self.tau / self.agent[0].weight[:,1]*self.agent[0].weight[:,1]
         action_var = action_var.expand_as(action_mean)
         
         cov_mat = torch.diag_embed(action_var).to(device)
@@ -137,16 +139,18 @@ class Model(nn.Module):
         action = dist.sample()
         action_logprob = dist.log_prob(action)
 
-        memory.states.append(state)
-        memory.actions.append(action)
-        memory.logprobs.append(action_logprob)
+        if memory is not None:
+            memory.states.append(state)
+            memory.actions.append(action)
+            memory.logprobs.append(action_logprob)
         
         return action.detach()
     
     def evaluate(self, states, actions):
-        action_means = -states * self.agent[0].weight[0][0] / self.agent[0].weight[0][1]
+        action_means = -states * self.agent[0].weight[:,0] / self.agent[0].weight[:,1]
         
-        action_var = 0.5 * self.tau / self.agent[0].weight[0][1]*self.agent[0].weight[0][1]
+        # action_var = torch.full((action_dim,), 0.5 * self.tau)
+        action_var = 0.5 * self.tau / self.agent[0].weight[:,1]*self.agent[0].weight[:,1]
         action_var = action_var.expand_as(action_means)
         
         cov_mat = torch.diag_embed(action_var).to(device)
@@ -192,7 +196,7 @@ class SAC:
         
         # Normalizing the costs:
         costs = torch.tensor(costs).to(device)
-#        costs = (costs - costs.mean()) / (costs.std() + 1e-8)
+        # costs = (costs - costs.mean()) / (costs.std() + 1e-8)
         
         # convert list to tensor
         old_states = torch.stack(memory.states).to(device).detach()
@@ -204,7 +208,7 @@ class SAC:
             logprobs, action_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
                 
             # Finding Loss:
-            actor_loss = logprobs - action_values
+            actor_loss = action_values - logprobs
             critic_loss = 0.5 * self.MseLoss(action_values , costs)
             loss = actor_loss + critic_loss - dist_entropy / self.tau
             
@@ -225,7 +229,7 @@ R = np.array(1).reshape(1,1)
 
 state_dim = 1
 action_dim = 1
-log_interval = 100             # print avg cost in the interval
+log_interval = 100            # print avg cost in the interval
 max_episodes = 100000         # max training episodes
 max_timesteps = 10            # max timesteps in one episode
 
@@ -233,13 +237,13 @@ solved_cost = None
 
 n_latent_var = 1             # number of variables in hidden layer
 tau = 1.00                   # temperature constant
-K_epochs = 10                # update policy for K epochs
+K_epochs = 1                 # update policy for K epochs
 gamma = 1.00                 # discount factor
                          
-lr = 0.1        
+lr = 0.01        
 betas = (0.9, 0.999)         # parameters for Adam optimizer
 
-random_seed = 1
+random_seed = None
 #############################################
 
 if random_seed:
@@ -249,14 +253,14 @@ if random_seed:
     
 memory = Memory()
 sac = SAC(state_dim, action_dim, n_latent_var, tau, lr, betas, gamma, K_epochs)
-print(f"lr: {lr}, tau: {tau}, betas: {betas}")  
+print(f"device: {device}, lr: {lr}, tau: {tau}, betas: {betas}")  
 
 # logging variables
 running_cost = 0
 
 # training loop
 for i_episode in range(1, max_episodes+1):
-    state = np.random.randn(1,1)
+    state = 5*np.random.randn(1,1)
     done = False
     for t in range(max_timesteps):
         # Running policy_old:
@@ -279,27 +283,25 @@ for i_episode in range(1, max_episodes+1):
     running_cost += cost.item()
         
     # logging
-    if i_episode % log_interval == 0:
-        running_cost = running_cost/log_interval
-        
+    if i_episode % log_interval == 0:        
         print(list(sac.policy.agent.parameters())[0].grad)
         
-        print('Episode {} \t Avg cost: {:.2f}'.format(i_episode, running_cost))
+        print('Episode {} \t Avg cost: {:.2f}'.format(i_episode, running_cost/log_interval))
         running_cost = 0
         
         
-# random init to compare how the two controls act
-x0 = np.random.uniform(-5,5,(1,))
-u0 = np.zeros((1,))
-T = 50
+# # random init to compare how the two controls act
+# x0 = np.random.uniform(-5,5,(1,))
+# u0 = np.zeros((1,))
+# T = 50
 
-# Optimal control for comparison
-K, P, _ = control.dlqr(A,B,Q,R)
+# # Optimal control for comparison
+# K, P, _ = control.dlqr(A,B,Q,R)
 # TODO
-#x_star, u_star = control.simulate_discrete(A,B,K,x0.reshape(1,1),u0.reshape(1,1),T)
-#x_sim, u_sim = simulate(A,B,reinforce.policy.agent,x0,u0,T)
-#
-#compare_paths(np.array(x_sim), np.squeeze(x_star[:,:-1]), "state")
-#compare_paths(np.array(u_sim), np.squeeze(u_star[:,:-1]), "action")
-#compare_V(ppo.policy.agent,A,B,Q,R,K,T,gamma,alpha)
-#compare_P(ppo.policy.actor,K)
+# x_star, u_star = control.simulate_discrete(A,B,K,x0.reshape(1,1),u0.reshape(1,1),T)
+# x_sim, u_sim = simulate(A,B,reinforce.policy.agent,x0,u0,T)
+
+# compare_paths(np.array(x_sim), np.squeeze(x_star[:,:-1]), "state")
+# compare_paths(np.array(u_sim), np.squeeze(u_star[:,:-1]), "action")
+# compare_V(ppo.policy.agent,A,B,Q,R,K,T,gamma,alpha)
+# compare_P(ppo.policy.actor,K)
