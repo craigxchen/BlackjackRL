@@ -11,20 +11,21 @@ import lqr_control as control
 # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
 
-def simulate(A,B,policy,x0,T):
+def simulate_SAC(A,B,SAC,x0,T):
     """
-    simulate trajectory based on policy learned by PPO agent
+    simulate trajectory based on policy learned by agent
     """
     x_data = []
     u_data = []
     x = x0
-    u = policy(torch.as_tensor(x).float()).detach().numpy()
+    u = -torch.FloatTensor(x).to(device) * SAC.agent[0].weight[:,0] / SAC.agent[0].weight[:,1]
+    
     for t in range(T):
         u_data.append(u.item())
         x_data.append(x.item())
         
-        u = policy(torch.as_tensor(x).float()).detach().numpy()
-        x = np.matmul(A, x) + np.matmul(B, u)
+        u = -torch.FloatTensor(x).to(device) * SAC.agent[0].weight[:,0] / SAC.agent[0].weight[:,1]
+        x = A@x + B@u.detach().numpy()
         
     return x_data, u_data
 
@@ -64,28 +65,6 @@ def compare_V(critic,A,B,Q,R,K,T,gamma,alpha,low=-1,high=1):
     plt.show()
     return
 
-def compare_P(actor,K,low=-10,high=10):
-    fig, ax = plt.subplots()
-    colors = [ '#B53737', '#2D328F' ] # red, blue
-    label_fontsize = 18
-
-    states = torch.linspace(low,high).detach().reshape(100,1)
-    actions = actor(states).squeeze().detach().numpy()
-    optimal = -K*states.numpy()
-
-    ax.plot(states.numpy(),actions,color=colors[0],label='Approx. Policy')
-    ax.plot(states.numpy(),optimal,color=colors[1],label='Optimal Policy')
-
-
-    ax.set_xlabel('x',fontsize=label_fontsize)
-    ax.set_ylabel('y',fontsize=label_fontsize)
-    plt.legend()
-
-    plt.grid(True)
-    plt.show()
-    return
-
-
 class Memory:
     def __init__(self):
         self.actions = []
@@ -114,6 +93,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
         self.agent = nn.Sequential(
+                # Quadratic(),
                 nn.Linear(state_dim + action_dim, n_latent_var, bias=False),
                 Quadratic(),
                 # nn.Linear(n_latent_var, 1, bias=False)
@@ -243,7 +223,7 @@ gamma = 1.00                 # discount factor
 lr = 0.01        
 betas = (0.9, 0.999)         # parameters for Adam optimizer
 
-random_seed = None
+random_seed = 1
 #############################################
 
 if random_seed:
@@ -284,24 +264,22 @@ for i_episode in range(1, max_episodes+1):
         
     # logging
     if i_episode % log_interval == 0:        
-        print(list(sac.policy.agent.parameters())[0].grad)
+        # print(list(sac.policy.agent.parameters())[0].grad)
         
         print('Episode {} \t Avg cost: {:.2f}'.format(i_episode, running_cost/log_interval))
         running_cost = 0
         
         
-# # random init to compare how the two controls act
-# x0 = np.random.uniform(-5,5,(1,))
-# u0 = np.zeros((1,))
-# T = 50
+# random init to compare how the two controls act
+x0 = np.random.uniform(-5,5,(1,))
+u0 = np.zeros((1,))
+T = 50
 
-# # Optimal control for comparison
-# K, P, _ = control.dlqr(A,B,Q,R)
-# TODO
-# x_star, u_star = control.simulate_discrete(A,B,K,x0.reshape(1,1),u0.reshape(1,1),T)
-# x_sim, u_sim = simulate(A,B,reinforce.policy.agent,x0,u0,T)
+# Optimal control for comparison
+K, P, _ = control.dlqr(A,B,Q,R)
 
-# compare_paths(np.array(x_sim), np.squeeze(x_star[:,:-1]), "state")
-# compare_paths(np.array(u_sim), np.squeeze(u_star[:,:-1]), "action")
-# compare_V(ppo.policy.agent,A,B,Q,R,K,T,gamma,alpha)
-# compare_P(ppo.policy.actor,K)
+x_star, u_star = control.simulate_discrete(A,B,K,x0.reshape(1,1),u0.reshape(1,1),T)
+x_sim, u_sim = simulate_SAC(A,B,sac.policy,x0,T)
+
+compare_paths(np.array(x_sim), np.squeeze(x_star[:,:-1]), "state")
+compare_paths(np.array(u_sim), np.squeeze(u_star[:,:-1]), "action")
