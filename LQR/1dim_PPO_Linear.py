@@ -116,16 +116,7 @@ class ActorCritic(nn.Module):
                 Quadratic(),
                 nn.Linear(n_latent_var, 1, bias=False)
                 )
-        self.action_var = torch.full((action_dim,), action_std*action_std).to(device)
-        
-        if double:
-            with torch.no_grad():
-                temp1 = torch.randn([n_latent_var//2,state_dim]) * np.sqrt(2/n_latent_var)
-                self.critic[0].weight = nn.Parameter(torch.cat((temp1,temp1),dim=0))
-                
-                temp2 = torch.randn([1,n_latent_var//2]) * np.sqrt(2/n_latent_var)
-                self.critic[-1].weight = nn.Parameter(torch.cat((temp2,-temp2),dim=1))
-        
+        self.action_var = torch.full((action_dim,), action_std*action_std).to(device)        
          
     def forward(self):
         raise NotImplementedError
@@ -296,7 +287,7 @@ if __name__ == '__main__':
     
     # training loop
     for i_episode in range(1, max_episodes+1):
-        state = np.random.uniform(-5,5,(1,1))
+        state = np.random.randn(1,1)
         done = False
         for t in range(max_timesteps):
             time_step +=1
