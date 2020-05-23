@@ -5,6 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import lqr_control as control
 
+# # temp fix for OpenMP issue
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
 
 # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
@@ -32,8 +36,8 @@ def compare_paths(x_sim,x_star,ylabel):
     colors = [ '#2D328F', '#F15C19' ] # blue, orange
     
     t = np.arange(0,x_star.shape[0])
-    ax.plot(t,x_sim,color=colors[0],label='Agent')
     ax.plot(t,x_star,color=colors[1],label='True')
+    ax.plot(t,x_sim,color=colors[0],label='Agent')
     
     ax.set_xlabel('Time',fontsize=18)
     ax.set_ylabel(ylabel,fontsize=18)
@@ -45,41 +49,15 @@ def compare_paths(x_sim,x_star,ylabel):
 
 # "custom" activation functions for pytorch - compatible with autograd
 class Spike(nn.Module):
-    def __init__(self, center=1, width=1, height=1):
+    def __init__(self, center=1, width=1):
         super(Spike, self).__init__()
         self.c = center
         self.w = width
-        self.h = height
         self.alpha = torch.nn.Parameter(torch.ones(1))
 
     def forward(self, x):
-        if self.c - self.w < x < self.c + self.w:
-            if x <= self.c:
-                offset = self.h/self.w * (x - (self.c - self.w))
-            else:
-                offset = -self.h/self.w * (x + (self.c + self.w))
-        else:
-            offset = torch.zeros_like(x)
+        return x + self.alpha * torch.min(nn.ReLU(x - (self.c - self.w)),nn.ReLU(-x - (self.c + self.w)))
         
-        return x + self.alpha * offset
-
-class PLU(nn.Module):
-    """
-    piecewise linear unit
-    """
-    def __init__(self, alpha=None, beta=None):
-        super(PLU, self).__init__()
-        if alpha is None:
-            self.weight1 = torch.nn.Parameter(torch.rand(1,))
-        else:
-            self.weight1 = torch.nn.Parameter(torch.tensor(alpha))
-        if beta is None:
-            self.weight2 = torch.nn.Parameter(torch.rand(1,))
-        else:
-            self.weight2 = torch.nn.Parameter(torch.tensor(beta))
-        
-    def forward(self, x):
-        return self.weight1 * torch.max(x,torch.zeros_like(x)) + self.weight2 * torch.min(x,torch.zeros_like(x))
 
 class Memory:
     def __init__(self):
@@ -101,9 +79,8 @@ class PRELU(nn.Module):
         super(PRELU, self).__init__()
 
         self.agent = nn.Sequential(
-                # nn.Linear(state_dim, n_latent_var, bias=False),
-                PLU(),
-                # nn.Linear(n_latent_var, action_dim, bias=False)
+                nn.PReLU(),
+                nn.Linear(state_dim, action_dim, bias=False)
                 )
         
         self.state_dim = state_dim
@@ -268,7 +245,7 @@ gamma = 0.99                 # discount factor
 lr = 0.0003        
 betas = (0.9, 0.999)         # parameters for Adam optimizer
 
-random_seed = 1
+random_seed = None
 #############################################
 
 if random_seed:
@@ -318,14 +295,13 @@ for i_episode in range(1, max_episodes+1):
         
         
 # random init to compare how the two controls act
-x0 = np.random.uniform(-5,5,(1,))
-u0 = np.zeros((1,))
+x0 = np.random.randn(1,1)
 T = 50
 
 # Optimal control for comparison
 K, P, _ = control.dlqr(A,B,Q,R)
 
-x_star, u_star = control.simulate_discrete(A,B,K,x0.reshape(1,1),u0.reshape(1,1),T)
+x_star, u_star = control.simulate_discrete(A,B,K,x0.reshape(1,1),T)
 x_sim, u_sim = simulate(A,B,pg.policy.agent,x0,T)
 
 compare_paths(np.array(x_sim), np.squeeze(x_star[:,:-1]), "state")
