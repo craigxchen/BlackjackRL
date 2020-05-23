@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import lqr_control as control
 
-# # temp fix for OpenMP issue
+# temp fix for OpenMP issue
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
@@ -56,7 +56,7 @@ class Spike(nn.Module):
         self.alpha = torch.nn.Parameter(torch.ones(1))
 
     def forward(self, x):
-        return x + self.alpha * torch.min(nn.ReLU(x - (self.c - self.w)),nn.ReLU(-x - (self.c + self.w)))
+        return x + self.alpha * torch.min(torch.max((x - (self.c - self.w)),torch.zeros_like(x)),torch.max((-x - (self.c + self.w)),torch.zeros_like(x)))
         
 
 class Memory:
@@ -180,7 +180,7 @@ class PG:
         self.K_epochs = K_epochs
         self.sigma = sigma
         
-        self.policy = PRELU(state_dim, action_dim, n_latent_var, sigma).to(device)
+        self.policy = CHAOS(state_dim, action_dim, n_latent_var, sigma).to(device)
         
         self.optimizer = torch.optim.Adam(self.policy.agent.parameters(), lr=lr, betas=betas)
         
@@ -262,7 +262,7 @@ running_cost = 0
 
 # training loop
 for i_episode in range(1, max_episodes+1):
-    state = np.random.randn(1,1)
+    state = 5*np.random.randn(1,1)
     done = False
     for t in range(max_timesteps):
         # Running policy_old:
@@ -295,7 +295,7 @@ for i_episode in range(1, max_episodes+1):
         
         
 # random init to compare how the two controls act
-x0 = np.random.randn(1,1)
+x0 = 5*np.random.randn(1,1)
 T = 50
 
 # Optimal control for comparison
