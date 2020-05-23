@@ -56,7 +56,7 @@ class Spike(nn.Module):
         self.alpha = torch.nn.Parameter(torch.ones(1))
 
     def forward(self, x):
-        return x + self.alpha * torch.min(torch.max((x - (self.c - self.w)),torch.zeros_like(x)),torch.max((-x - (self.c + self.w)),torch.zeros_like(x)))
+        return x + self.alpha * torch.min(torch.max((x - (self.c - self.w)),torch.zeros_like(x)),torch.max((-x + (self.c + self.w)),torch.zeros_like(x)))
         
 
 class Memory:
@@ -128,7 +128,7 @@ class CHAOS(nn.Module):
         super(CHAOS, self).__init__()
 
         self.agent = nn.Sequential(
-                nn.Linear(state_dim, n_latent_var, bias=False),
+                nn.Linear(state_dim, action_dim, bias=False),
                 Spike(),
                 # nn.Linear(n_latent_var, action_dim, bias=False)
                 )
