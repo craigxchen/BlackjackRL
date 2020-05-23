@@ -120,9 +120,10 @@ class NeuralNetwork:
 
         return dA_prev, dW, dB
 
-    def net_backward(self, targets, predictions, alpha=1):
-        # derivative of cost w.r.t. final activation (1/alpha^2 MSE)
-        dA = -(1/alpha)*(targets - alpha*predictions)
+    def net_backward(self, dA, alpha=1):
+        """
+        dA is derivative of cost w.r.t output
+        """
         for idx, layer in reversed(list(enumerate(self.nn_structure))):
             if idx == 0:
                 a_prev = self.input_batch

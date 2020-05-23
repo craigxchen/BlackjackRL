@@ -56,8 +56,9 @@ class Spike(nn.Module):
         self.alpha = torch.nn.Parameter(torch.ones(1))
 
     def forward(self, x):
-        return x + self.alpha * torch.min(torch.max((x - (self.c - self.w)),torch.zeros_like(x)),torch.max((-x + (self.c + self.w)),torch.zeros_like(x)))
-        
+        return x + self.alpha * torch.min(torch.max((x - (self.c - self.w)),torch.zeros_like(x)),
+                                          torch.max((-x + (self.c + self.w)),torch.zeros_like(x)))
+    
 
 class Memory:
     def __init__(self):
@@ -201,7 +202,7 @@ class PG:
         
         # Normalizing the costs:
         costs = torch.tensor(costs).to(device)
-        # costs = (costs - costs.mean()) / (costs.std() + 1e-8)
+        costs = (costs - costs.mean()) / (costs.std() + 1e-8)
         
         # convert list to tensor
         old_states = torch.stack(memory.states).to(device).detach()
@@ -242,7 +243,7 @@ sigma = 0.1                  # standard deviation of actions
 K_epochs = 1                 # update policy for K epochs
 gamma = 0.99                 # discount factor
                          
-lr = 0.0003        
+lr = 0.001        
 betas = (0.9, 0.999)         # parameters for Adam optimizer
 
 random_seed = None

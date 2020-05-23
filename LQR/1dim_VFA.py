@@ -12,7 +12,7 @@ nn_arq = [
     {"input_dim": 64, "output_dim": 1, "activation": "none"},
 ]
 
-model = NeuralNetwork(nn_arq, bias=True, double=True)
+model = NeuralNetwork(nn_arq, bias=True, double=False)
 
 
 A = np.array(1).reshape(1,1)
@@ -26,7 +26,7 @@ u0 = np.array(0).reshape(1,1)
 # number of time steps to simulate
 T = 30
 # number of iterations of the dynamical systems for training
-NUM_TRIALS = 200
+NUM_TRIALS = 250
 ALPHA = 100
 GAMMA = 0.9
 
