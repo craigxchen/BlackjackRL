@@ -50,7 +50,7 @@ def compare_paths(x_sim, x_star, ylabel):
     return
 
 
-def compare_P(actor, K, low=-10, high=10):
+def compare_P(actor, K, low=-10, high=10, actor_label='Approx. Policy'):
     fig, ax = plt.subplots()
     colors = ['#2D328F', '#F15C19']  # blue, orange
     label_fontsize = 18
@@ -60,7 +60,7 @@ def compare_P(actor, K, low=-10, high=10):
     optimal = -K * states.numpy()
 
     ax.plot(states.numpy(), optimal, color=colors[1], label='Optimal Policy')
-    ax.plot(states.numpy(), actions, color=colors[0], label='Approx. Policy')
+    ax.plot(states.numpy(), actions, color=colors[0], label=actor_label)
 
     ax.set_xlabel('x', fontsize=label_fontsize)
     ax.set_ylabel('y', fontsize=label_fontsize)
@@ -80,8 +80,10 @@ class Spike(nn.Module):
         self.alpha = torch.nn.Parameter(torch.ones(1))
 
     def forward(self, x):
-        return x + self.alpha * torch.min(torch.max((x - (self.c - self.w)), torch.zeros_like(x)),
-                                          torch.max((-x + (self.c + self.w)), torch.zeros_like(x)))
+        return x + self.alpha * (
+                torch.min(torch.max((x - (self.c - self.w)), torch.zeros_like(x)),torch.max((-x + (self.c + self.w)), torch.zeros_like(x)))
+                - 2*torch.min(torch.max((x - (self.c - self.w+1)), torch.zeros_like(x)),torch.max((-x + (self.c + self.w+1)), torch.zeros_like(x)))
+                )
 
 
 class Memory:
@@ -149,7 +151,6 @@ class PRELU(nn.Module):
         return action_logprobs, dist_entropy
 
 
-# TODO
 class CHAOS(nn.Module):
     def __init__(self, state_dim, action_dim, n_latent_var, sigma):
         super(CHAOS, self).__init__()
@@ -272,7 +273,7 @@ gamma = 0.99  # discount factor
 lr = 0.0003
 betas = (0.9, 0.999)  # parameters for Adam optimizer
 
-random_seed = None
+random_seed = 1
 #############################################
 
 if random_seed:
@@ -285,6 +286,9 @@ pg = PG(state_dim, action_dim, n_latent_var, sigma, lr, betas, gamma, K_epochs)
 
 # Optimal control for comparison
 K, P, _ = control.dlqr(A, B, Q, R)
+
+# compare initial policy with optimal
+compare_P(pg.policy.agent, K, actor_label="Initial Policy")
 
 # important parameters
 print(f"device: {device}, lr: {lr}, sigma: {sigma}, betas: {betas}")
