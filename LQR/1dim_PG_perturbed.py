@@ -181,7 +181,8 @@ class PG:
         self.K_epochs = K_epochs
         self.sigma = sigma
         
-        self.policy = CHAOS(state_dim, action_dim, n_latent_var, sigma).to(device)
+        self.policy = PRELU(state_dim, action_dim, n_latent_var, sigma).to(device)
+        # self.policy = CHAOS(state_dim, action_dim, n_latent_var, sigma).to(device)
         
         self.optimizer = torch.optim.Adam(self.policy.agent.parameters(), lr=lr, betas=betas)
         
@@ -202,7 +203,7 @@ class PG:
         
         # Normalizing the costs:
         costs = torch.tensor(costs).to(device)
-        costs = (costs - costs.mean()) / (costs.std() + 1e-8)
+        # costs = (costs - costs.mean()) / (costs.std() + 1e-8)
         
         # convert list to tensor
         old_states = torch.stack(memory.states).to(device).detach()
@@ -233,20 +234,20 @@ R = np.array(1).reshape(1,1)
 state_dim = 1
 action_dim = 1
 log_interval = 100            # print avg cost in the interval
-max_episodes = 100000         # max training episodes
-max_timesteps = 10           # max timesteps in one episode
+max_episodes = 200000         # max training episodes
+max_timesteps = 10            # max timesteps in one episode
 
 solved_cost = None
 
 n_latent_var = 1             # number of variables in hidden layer
 sigma = 0.1                  # standard deviation of actions
-K_epochs = 1                 # update policy for K epochs
+K_epochs = 5                 # update policy for K epochs
 gamma = 0.99                 # discount factor
                          
-lr = 0.001        
+lr = 0.0003        
 betas = (0.9, 0.999)         # parameters for Adam optimizer
 
-random_seed = None
+random_seed = 1
 #############################################
 
 if random_seed:
@@ -256,6 +257,11 @@ if random_seed:
     
 memory = Memory()
 pg = PG(state_dim, action_dim, n_latent_var, sigma, lr, betas, gamma, K_epochs)
+
+# Optimal control for comparison
+K, P, _ = control.dlqr(A,B,Q,R)    
+
+# important parameters
 print(f"device: {device}, lr: {lr}, sigma: {sigma}, betas: {betas}")  
 
 # logging variables
@@ -263,7 +269,7 @@ running_cost = 0
 
 # training loop
 for i_episode in range(1, max_episodes+1):
-    state = 5*np.random.randn(1,1)
+    state = np.random.randn(1,1)
     done = False
     for t in range(max_timesteps):
         # Running policy_old:
@@ -293,17 +299,15 @@ for i_episode in range(1, max_episodes+1):
     if i_episode % log_interval == 0:        
         print('Episode {} \t Avg cost: {:.2f}'.format(i_episode, running_cost/log_interval))
         running_cost = 0
-        
-        
+            
+  
 # random init to compare how the two controls act
-x0 = 5*np.random.randn(1,1)
+x0 = np.random.randn(1,1)
 T = 50
-
-# Optimal control for comparison
-K, P, _ = control.dlqr(A,B,Q,R)
 
 x_star, u_star = control.simulate_discrete(A,B,K,x0.reshape(1,1),T)
 x_sim, u_sim = simulate(A,B,pg.policy.agent,x0,T)
 
 compare_paths(np.array(x_sim), np.squeeze(x_star[:,:-1]), "state")
 compare_paths(np.array(u_sim), np.squeeze(u_star[:,:-1]), "action")
+
