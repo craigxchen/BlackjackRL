@@ -315,7 +315,7 @@ if __name__ == '__main__':
         avg_length += t
         
 #        #stop training if avg_cost < solved_cost
-#        if running_cost > (log_interval*solved_cost):
+#        if running_cost < (log_interval*solved_cost):
 #            print("########## Solved! ##########")
 #            torch.save(ppo.policy.state_dict(), './PPO_continuous_solved_{}.pth'.format("1dim_LQR"))
 #            break

@@ -7,7 +7,6 @@ import lqr_control as control
 
 # temp fix for OpenMP issue
 import os
-
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -62,8 +61,8 @@ def compare_P(actor, K, low=-10, high=10, actor_label='Approx. Policy'):
     ax.plot(states.numpy(), optimal, color=colors[1], label='Optimal Policy')
     ax.plot(states.numpy(), actions, color=colors[0], label=actor_label)
 
-    ax.set_xlabel('x', fontsize=label_fontsize)
-    ax.set_ylabel('y', fontsize=label_fontsize)
+    ax.set_xlabel('x (state)', fontsize=label_fontsize)
+    ax.set_ylabel('u (action)', fontsize=label_fontsize)
     plt.legend()
 
     plt.grid(True)
@@ -108,7 +107,7 @@ class PRELU(nn.Module):
 
         self.agent = nn.Sequential(
             nn.PReLU(),
-            nn.Linear(state_dim, action_dim, bias=False)
+            nn.Linear(state_dim, action_dim, bias=True)
         )
 
         self.state_dim = state_dim
@@ -208,8 +207,8 @@ class PG:
         self.K_epochs = K_epochs
         self.sigma = sigma
 
-        # self.policy = PRELU(state_dim, action_dim, n_latent_var, sigma).to(device)
-        self.policy = CHAOS(state_dim, action_dim, n_latent_var, sigma).to(device)
+        self.policy = PRELU(state_dim, action_dim, n_latent_var, sigma).to(device)
+        # self.policy = CHAOS(state_dim, action_dim, n_latent_var, sigma).to(device)
 
         self.optimizer = torch.optim.Adam(self.policy.agent.parameters(), lr=lr, betas=betas)
 
@@ -260,17 +259,15 @@ R = np.array(1).reshape(1, 1)
 state_dim = 1
 action_dim = 1
 log_interval = 100  # print avg cost in the interval
-max_episodes = 250000  # max training episodes
-max_timesteps = 10  # max timesteps in one episode
-
-solved_cost = None
+max_episodes = 200000  # max training episodes
+max_timesteps = 20  # max timesteps in one episode
 
 n_latent_var = 1  # number of variables in hidden layer
 sigma = 0.1  # standard deviation of actions
 K_epochs = 5  # update policy for K epochs
 gamma = 0.99  # discount factor
 
-lr = 0.0003
+lr = 0.005
 betas = (0.9, 0.999)  # parameters for Adam optimizer
 
 random_seed = 1
@@ -328,6 +325,7 @@ for i_episode in range(1, max_episodes + 1):
     if i_episode % log_interval == 0:
         print('Episode {} \t Avg cost: {:.2f}'.format(i_episode, running_cost / log_interval))
         running_cost = 0
+
 
 # random init to compare how the two controls act
 x0 = np.random.randn(1, 1)
