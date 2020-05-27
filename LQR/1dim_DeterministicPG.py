@@ -87,9 +87,10 @@ class Spike(nn.Module):
         self.c = center
         self.w = width
         self.alpha = torch.nn.Parameter(torch.ones(1))
+        self.beta = torch.nn.Parameter(torch.ones(1))
 
     def forward(self, x):
-        return x + self.alpha * (
+        return self.alpha * x + self.beta * (
                 torch.min(torch.max((x - (self.c - self.w)), torch.zeros_like(x)),
                           torch.max((-x + (self.c + self.w)), torch.zeros_like(x)))
                 - 2 * torch.min(torch.max((x - (self.c - self.w + 1)), torch.zeros_like(x)),
@@ -161,7 +162,6 @@ class CHAOS(nn.Module):
         super(CHAOS, self).__init__()
 
         self.agent = nn.Sequential(
-            nn.Linear(state_dim, action_dim, bias=True),
             Spike(),
         )
 
@@ -184,8 +184,8 @@ class PG:
         self.gamma = gamma
 
         ## uncomment/comment to switch between activation function variants
-        self.policy = PRELU(state_dim, action_dim, n_latent_var).to(device)
-        # self.policy = CHAOS(state_dim, action_dim, n_latent_var).to(device)
+        # self.policy = PRELU(state_dim, action_dim, n_latent_var).to(device)
+        self.policy = CHAOS(state_dim, action_dim, n_latent_var).to(device)
         # self.policy = LINEAR(state_dim, action_dim, n_latent_var).to(device)
 
         self.optimizer = torch.optim.Adam(self.policy.agent.parameters(), lr=lr, betas=betas)
@@ -244,6 +244,7 @@ pg = PG(state_dim, action_dim, n_latent_var, lr, betas, gamma)
 
 # Optimal control for comparison
 K, P, _ = control.dlqr(A, B, Q, R)
+optimal_params = torch.FloatTensor([-K.item(),0.])
 
 # compare initial policy with optimal
 compare_P(pg.policy.agent, K, actor_label="Initial Policy")
@@ -285,6 +286,7 @@ for i_episode in range(1, max_episodes + 1):
     # logging
     if i_episode % log_interval == 0:
         print('Episode {} \t Avg cost: {:.2f}'.format(i_episode, running_cost / log_interval))
+        print('\t Distance to optimal parameters: {:.2f}'.format(torch.norm(torch.tensor(list(pg.policy.agent.parameters()))-optimal_params), 2))
         running_cost = 0
 
 # random init to compare how the two controls act

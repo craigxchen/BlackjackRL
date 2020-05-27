@@ -71,15 +71,29 @@ def compare_P(actor, K, low=-10, high=10, actor_label='Approx. Policy'):
 
 
 # "custom" activation functions for pytorch - compatible with autograd
+class PLU(nn.Module):
+    def __init__(self):
+        super(PLU, self).__init__()
+        self.w1 = torch.nn.Parameter(torch.ones(1))
+        self.w2 = torch.nn.Parameter(torch.ones(1))
+
+    def forward(self, x):
+        return self.w1 * torch.max(x, torch.zeros_like(x)) + self.w2 * torch.min(x, torch.zeros_like(x))
+
 class Spike(nn.Module):
     def __init__(self, center=1, width=1):
         super(Spike, self).__init__()
         self.c = center
         self.w = width
         self.alpha = torch.nn.Parameter(torch.ones(1))
+        self.beta = torch.nn.Parameter(torch.ones(1))
+        
+        # self.alpha = torch.nn.Parameter(torch.normal(0,1,size=(1,)))
+        # self.beta = torch.nn.Parameter(torch.normal(0,1,size=(1,)))
+        
 
     def forward(self, x):
-        return x + self.alpha * (
+        return self.alpha * x + self.beta * (
                 torch.min(torch.max((x - (self.c - self.w)), torch.zeros_like(x)),torch.max((-x + (self.c + self.w)), torch.zeros_like(x)))
                 - 2*torch.min(torch.max((x - (self.c - self.w+1)), torch.zeros_like(x)),torch.max((-x + (self.c + self.w+1)), torch.zeros_like(x)))
                 )
@@ -106,7 +120,7 @@ class PRELU(nn.Module):
         super(PRELU, self).__init__()
 
         self.agent = nn.Sequential(
-            nn.PReLU(),
+            PLU(),
             nn.Linear(state_dim, action_dim, bias=True)
         )
 
@@ -155,7 +169,7 @@ class CHAOS(nn.Module):
         super(CHAOS, self).__init__()
 
         self.agent = nn.Sequential(
-            nn.Linear(state_dim, action_dim, bias=False),
+            # nn.Linear(state_dim, action_dim, bias=False),
             Spike(),
             # nn.Linear(n_latent_var, action_dim, bias=False)
         )
@@ -207,8 +221,8 @@ class PG:
         self.K_epochs = K_epochs
         self.sigma = sigma
 
-        self.policy = PRELU(state_dim, action_dim, n_latent_var, sigma).to(device)
-        # self.policy = CHAOS(state_dim, action_dim, n_latent_var, sigma).to(device)
+        # self.policy = PRELU(state_dim, action_dim, n_latent_var, sigma).to(device)
+        self.policy = CHAOS(state_dim, action_dim, n_latent_var, sigma).to(device)
 
         self.optimizer = torch.optim.Adam(self.policy.agent.parameters(), lr=lr, betas=betas)
 
@@ -241,7 +255,7 @@ class PG:
 
             # Finding Loss:
             actor_loss = costs * logprobs
-            loss = actor_loss - self.sigma * dist_entropy
+            loss = actor_loss - 0.01 * dist_entropy
 
             # take gradient step
             self.optimizer.zero_grad()
@@ -260,17 +274,17 @@ state_dim = 1
 action_dim = 1
 log_interval = 100  # print avg cost in the interval
 max_episodes = 200000  # max training episodes
-max_timesteps = 20  # max timesteps in one episode
+max_timesteps = 10  # max timesteps in one episode
 
 n_latent_var = 1  # number of variables in hidden layer
 sigma = 0.1  # standard deviation of actions
-K_epochs = 5  # update policy for K epochs
+K_epochs = 1  # update policy for K epochs
 gamma = 0.99  # discount factor
 
-lr = 0.005
+lr = 0.01
 betas = (0.9, 0.999)  # parameters for Adam optimizer
 
-random_seed = 1
+random_seed = None
 #############################################
 
 if random_seed:
@@ -283,6 +297,7 @@ pg = PG(state_dim, action_dim, n_latent_var, sigma, lr, betas, gamma, K_epochs)
 
 # Optimal control for comparison
 K, P, _ = control.dlqr(A, B, Q, R)
+optimal_params = torch.FloatTensor([-K.item(),0.])
 
 # compare initial policy with optimal
 compare_P(pg.policy.agent, K, actor_label="Initial Policy")
@@ -295,6 +310,9 @@ running_cost = 0
 
 # training loop
 for i_episode in range(1, max_episodes + 1):
+    
+    rel_ent = []
+    
     state = np.random.randn(1, 1)
     done = False
     for t in range(max_timesteps):
@@ -311,6 +329,10 @@ for i_episode in range(1, max_episodes + 1):
         # Saving cost and is_terminals:
         memory.costs.append(cost.item())
         memory.is_terminals.append(done)
+        
+        # Save relative entropy
+        opt_act = -K @ state
+        rel_ent.append((action.item() - opt_act.item())**2 / (2 * sigma**2))
 
         if done:
             break
@@ -324,6 +346,8 @@ for i_episode in range(1, max_episodes + 1):
     # logging
     if i_episode % log_interval == 0:
         print('Episode {} \t Avg cost: {:.2f}'.format(i_episode, running_cost / log_interval))
+        print('\t Distance to optimal parameters: {:.2f}'.format(torch.norm(torch.tensor(list(pg.policy.agent.parameters()))-optimal_params), 2))
+        print('\t Relative Entropy from optimal to current policy: {:.2f}'.format(np.mean(rel_ent)))
         running_cost = 0
 
 
