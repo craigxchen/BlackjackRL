@@ -8,14 +8,14 @@ import matplotlib.pyplot as plt
 
 log_interval = 100
 
-max_episodes = 1000
-gamma = 1.00
-lr = 1e-2
+max_episodes = 100000
+gamma = 0.01
+lr = 1e-3
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 env = gym.make("CartPole-v1")
-render = True
+render = False
 state_space_dim = env.observation_space.shape[0]
 action_space_dim = env.action_space.n
 
@@ -35,6 +35,7 @@ model.train()
 # logging info
 running_reward = 0
 exp_length = 0
+loss_tracker = []
 
 for idx in range(max_episodes):
     state = torch.from_numpy(env.reset()).float().to(device)
@@ -84,8 +85,20 @@ for idx in range(max_episodes):
     loss.backward()
     adam_opt.step()
 
+    loss_tracker.append(loss.item())
+    loss_tracker = loss_tracker[-11:]  # only keep previous 10 items (excluding the current loss)
+    if len(loss_tracker) > 10 and gamma < 1:
+        # if loss hasn't changed in the past 10 iterations, we are probably near some minima, increase gamma
+        if abs(sum(loss_tracker[:-1])/10 - loss_tracker[-1]) < 0.01:
+            gamma += 0.01
+            print(f"Gamma increased to {gamma:.2f}!")
+            del loss_tracker[:]
+
     if idx % log_interval == 0:
         print(f"episode: {idx} \t avg length: {exp_length / log_interval} \t avg reward: {running_reward / log_interval}")
+        if running_reward / log_interval > env.spec.reward_threshold:
+            print("Solved! Reward above threshold")
+            break
         running_reward = 0
         exp_length = 0
 
