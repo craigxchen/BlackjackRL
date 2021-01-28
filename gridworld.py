@@ -6,9 +6,9 @@ from torch.distributions import Categorical
 from gridworld_environment import GridWorld
 
 log_interval = 100
-homotopy = False
+homotopy = True
 
-max_episodes = 100000
+max_episodes = 10000
 if homotopy:
     gamma = 0.01
 else:
@@ -17,10 +17,10 @@ lr = 1e-3
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-env = GridWorld()
+env = GridWorld(random_init=False)
 
 model = nn.Sequential(
-    nn.Linear(1, 64),
+    nn.Linear(2, 64),
     nn.Dropout(),
     nn.ReLU(),
     nn.Linear(64, 2),
@@ -37,6 +37,8 @@ running_reward = 0
 exp_length = 0
 loss_tracker = []
 
+print(f"training on {device}")
+
 for idx in range(max_episodes):
     state, _, done = env.reset()
     state = torch.tensor([state]).float().to(device)
@@ -51,8 +53,8 @@ for idx in range(max_episodes):
         action_logprob = dist.log_prob(action)
 
         # take next step in environment
-        next_state, reward, done = env.step(action.numpy())
-        state = torch.tensor([next_state]).float().to(device)
+        next_state_numpy, reward, done = env.step(action.numpy())
+        state = torch.from_numpy(next_state_numpy).float().to(device)
 
         # store relevant info
         rewards.append(reward)
@@ -93,7 +95,7 @@ for idx in range(max_episodes):
             del loss_tracker[:]
 
     if idx % log_interval == 0 and idx != 0:
-        if running_reward / log_interval >= -50.0:
+        if running_reward / log_interval >= -51.0:
             print(f"episode: {idx} \t avg length: {exp_length / log_interval} \t avg reward: {running_reward / log_interval}")
             print("Solved!")
             break
@@ -101,5 +103,5 @@ for idx in range(max_episodes):
         running_reward = 0
         exp_length = 0
 
-
+env.plot_policy(model)
 
