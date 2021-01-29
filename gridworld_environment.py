@@ -60,7 +60,7 @@ class GridWorld:
             return -1
         
     def plot_policy(self, model):
-        data = np.empty((51, 3))
+        data = np.empty((self.n + 1, 3))
         for state in self.state_space:
             data[state[0],state[1]] = np.argmax(model(torch.tensor(state).float()).detach().numpy())
         
@@ -73,7 +73,7 @@ class GridWorld:
         ax.imshow(data, cmap=cmap, norm=norm)
         
         ax.set_xticks(np.arange(3))
-        ax.set_yticks(np.arange(51))
+        ax.set_yticks(np.arange(self.n + 1))
         
         minor_locator = AutoMinorLocator(2)
         ax.xaxis.set_minor_locator(minor_locator)

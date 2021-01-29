@@ -6,7 +6,9 @@ from torch.distributions import Categorical
 from gridworld_environment import GridWorld
 
 log_interval = 100
-homotopy = True
+homotopy = False
+random_init = False
+env_size = 10
 
 max_episodes = 10000
 if homotopy:
@@ -17,7 +19,7 @@ lr = 1e-3
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-env = GridWorld(random_init=False)
+env = GridWorld(random_init=random_init, n=env_size)
 
 model = nn.Sequential(
     nn.Linear(2, 64),
@@ -95,7 +97,7 @@ for idx in range(max_episodes):
             del loss_tracker[:]
 
     if idx % log_interval == 0 and idx != 0:
-        if running_reward / log_interval >= -51.0:
+        if running_reward / log_interval >= -env_size-1:
             print(f"episode: {idx} \t avg length: {exp_length / log_interval} \t avg reward: {running_reward / log_interval}")
             print("Solved!")
             break
