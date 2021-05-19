@@ -1,5 +1,5 @@
 import numpy as np
-import scipy.linalg
+import scipy.linalg as sl
 import matplotlib.pyplot as plt
 
 def lqr(A,B,Q,R):
@@ -8,11 +8,11 @@ def lqr(A,B,Q,R):
     given linear system (A,B) and cost function parameterized by (Q,R)
     '''
 
-    S = scipy.linalg.solve_continuous_are(A, B, Q, R)
+    S = sl.solve_continuous_are(A, B, Q, R)
 
-    K = np.matmul(scipy.linalg.inv(R), np.matmul(B.T, S))
+    K = np.matmul(sl.inv(R), np.matmul(B.T, S))
 
-    eigVals, eigVecs = scipy.linalg.eig(A-np.matmul(B,K))
+    eigVals, eigVecs = sl.eig(A-np.matmul(B,K))
 
     return K, S, eigVals
 
@@ -22,15 +22,15 @@ def dlqr(A,B,Q,R):
     given linear system (A,B) and cost function parameterized by (Q,R)
     '''
 
-    S = scipy.linalg.solve_discrete_are(A, B, Q, R)
+    S = sl.solve_discrete_are(A, B, Q, R)
 
-    F = np.matmul(scipy.linalg.inv(np.matmul(np.matmul(B.T, S), B) + R), (np.matmul(np.matmul(B.T, S), A)))
+    F = np.matmul(sl.inv(np.matmul(np.matmul(B.T, S), B) + R), (np.matmul(np.matmul(B.T, S), A)))
 
-    eigVals, eigVecs = scipy.linalg.eig(A - np.matmul(B, F))
+    eigVals, eigVecs = sl.eig(A - np.matmul(B, F))
 
     return F, S, eigVals
 
-def simulate_discrete(A,B,K,x0,u0,T):
+def simulate_discrete(A,B,K,x0,T):
     '''
     simulates the linear system (A,B) with static control law
     u(t) = K @ x(t)
@@ -40,7 +40,7 @@ def simulate_discrete(A,B,K,x0,u0,T):
     rows are indexed by time
     '''
     x = x0
-    u = u0
+    u = -K@x0
     for t in range(T):
         u_t = np.matmul(-K, x[:,[-1]])
         x_prime = np.matmul(A, x[:,[-1]]) + np.matmul(B, u_t)
@@ -100,7 +100,6 @@ def plot_paths(x1,x2,ylabel,R1,R2):
     plt.show()
     return
 
-# TODO fix
 def plot_states(x,ylabel,R):
     fig, ax = plt.subplots()
     colors = [ '#B53737', '#0B6623', '#2D328F'] # red, green, blue
@@ -125,7 +124,6 @@ def plot_loss(loss):
     colors = [ '#B53737'] # red
     label_fontsize = 18
 
-    # change to be a loop in the future that supports N colors
     ax.plot(loss,color=colors[0],label='Loss')
 
     ax.set_xlabel('Time',fontsize=label_fontsize)
