@@ -48,15 +48,15 @@ def compare_P(actor, K, low=-5, high=5, actor_label='Approx. Policy'):
     actor is expected to be a pytorch nn.Sequential model
     """
     fig, ax = plt.subplots()
-    colors = ['#2D328F', '#F15C19']  # blue, orange
+    colrs = ['#2D328F', '#F15C19']  # blue, orange
     label_fontsize = 18
 
     states = torch.linspace(low, high, 1000).detach().reshape(1000, 1)
     actions = actor(states).squeeze().detach().numpy()
     optimal = -K * states.numpy()
 
-    ax.plot(states.numpy(), optimal, color=colors[1], label='Optimal Policy')
-    ax.plot(states.numpy(), actions, color=colors[0], label=actor_label)
+    ax.plot(states.numpy(), optimal, color=colrs[1], label='Optimal Policy')
+    ax.plot(states.numpy(), actions, color=colrs[0], label=actor_label)
 
     ax.set_xlabel('x (state)', fontsize=label_fontsize)
     ax.set_ylabel('u (action)', fontsize=label_fontsize)
@@ -64,6 +64,100 @@ def compare_P(actor, K, low=-5, high=5, actor_label='Approx. Policy'):
 
     plt.grid(True)
     plt.show()
+    return
+
+def plot_cost(A,B,Q,R,gamma=1, size="small"):
+    """
+
+    Parameters
+    ----------
+    A,B,Q,R : 2d list
+        [[r]] for real number r
+
+    gamma : float, optional
+        discount factor, default 1.
+    size : string, optional
+        accepted values are "small" and "large"
+        indicates type of graph, either zoomed in or not
+
+    """
+    def _gen_cost(t0, t1, gamma):
+        with torch.no_grad():
+            policy = FourTents(t0,t1)
+            
+            running_cost = 0
+            state = torch.tensor([[-117/59]])   
+            for i in range(10):        
+                action = policy(state) 
+                
+                cost = state * torch.FloatTensor(Q) * state + action * torch.FloatTensor(R) * action
+                
+                state = torch.FloatTensor(A) * state + torch.FloatTensor(B) * action
+
+                running_cost += gamma**i * cost.item()
+                
+            # print("x_0 done")
+                
+            state = torch.tensor([[-588/295]])
+            for i in range(10):
+                action = policy(state) 
+                
+                cost = state * torch.FloatTensor(Q) * state + action * torch.FloatTensor(R) * action
+                
+                state = torch.FloatTensor(A) * state + torch.FloatTensor(B) * action
+
+                running_cost += gamma**i * cost.item()
+            
+        return running_cost
+    
+
+    
+    if size == "small":
+        x_low = -0.001
+        x_high = 0.001
+        y_low = 0.999
+        y_high = 1.001
+    elif size == "large":
+        x_low = -0.01
+        x_high = 0.01
+        y_low = 0.99
+        y_high = 1.01
+    else:
+        raise NotImplementedError()
+    
+    t0_range = np.linspace(x_low, x_high, 100)
+    t1_range = np.linspace(y_low, y_high, 100)
+    
+    X, Y = np.meshgrid(t0_range, t1_range)
+    costs = np.array([[_gen_cost(t0, t1, gamma) for t0 in t0_range] for t1 in t1_range])
+    
+    fig = plt.figure()
+    ax1 = fig.add_subplot(121, projection='3d')
+    ax2 = fig.add_subplot(122, projection='3d')
+
+    ax1.contour3D(X, Y, costs, 500, cmap="coolwarm")
+    ax1.set_xlabel(r"$\theta_0$")
+    ax1.set_ylabel(r"$\theta_1$")
+    ax1.set_zlabel("Cost")
+    ax1.set_xticks([x_low, 0, x_high])
+    ax1.set_yticks([y_low, 1.00, y_high])
+    ax1.set_zticks([14.0, 15.0])
+    ax1.set_title("Cost Landscape")
+    ax1.xaxis.set_rotate_label(False) 
+    ax1.yaxis.set_rotate_label(False) 
+    ax1.view_init(elev=17, azim=-108)
+    
+    ax2.contour3D(X, Y, costs, 500, cmap="coolwarm")
+    ax2.set_xlabel(r"$\theta_0$")
+    ax2.set_ylabel(r"$\theta_1$")
+    ax2.set_zlabel("Cost")
+    ax2.set_xticks([x_low, 0, x_high])
+    ax2.set_yticks([y_low, 1.00, y_high])
+    ax2.set_zticks([14.0, 15.0])
+    ax2.set_title("Cost Landscape")
+    ax2.xaxis.set_rotate_label(False) 
+    ax2.yaxis.set_rotate_label(False) 
+    ax2.view_init(elev=71, azim=-128)
     return
 
 
@@ -100,10 +194,10 @@ class LinSpike(nn.Module):
 
 
 class FourTents(nn.Module):
-    def __init__(self):
+    def __init__(self, alpha, beta):
         super(FourTents, self).__init__()
-        self.alpha = torch.nn.Parameter(torch.zeros(1))
-        self.beta = torch.nn.Parameter(torch.ones(1))
+        self.alpha = torch.nn.Parameter(torch.FloatTensor([alpha]))
+        self.beta = torch.nn.Parameter(torch.FloatTensor([beta]))
         
         self.w_0, self.w_1, self.w_2, self.w_3 = (-0.5, 3, 0.5, 0.5)
         self.a_1, self.a_2, self.a_3 = (-2, 1.5, 1.8)
@@ -198,11 +292,11 @@ class CHAOS(nn.Module):
         return action
 
 class CONTEXAMPLE(nn.Module):
-    def __init__(self, state_dim, action_dim, n_latent_var):
+    def __init__(self, state_dim, action_dim, n_latent_var, alpha, beta):
         super(CONTEXAMPLE, self).__init__()
 
         self.agent = nn.Sequential(
-            FourTents(),
+            FourTents(alpha, beta),
         )
     
     def forward(self):
@@ -218,7 +312,7 @@ class CONTEXAMPLE(nn.Module):
         return action
 
 class PG:
-    def __init__(self, state_dim, action_dim, n_latent_var, lr, betas, gamma):
+    def __init__(self, state_dim, action_dim, n_latent_var, lr, betas, gamma, alpha=0, beta=1):
         self.betas = betas
         self.gamma = gamma
 
@@ -226,7 +320,7 @@ class PG:
         # self.policy = PRELU(state_dim, action_dim, n_latent_var).to(device)
         # self.policy = CHAOS(state_dim, action_dim, n_latent_var).to(device)
         # self.policy = LINEAR(state_dim, action_dim, n_latent_var).to(device)
-        self.policy = CONTEXAMPLE(state_dim, action_dim, n_latent_var).to(device)
+        self.policy = CONTEXAMPLE(state_dim, action_dim, n_latent_var, alpha, beta).to(device)
 
         self.optimizer = torch.optim.SGD(self.policy.agent.parameters(), lr=lr)
 
@@ -248,6 +342,7 @@ class PG:
         self.optimizer.zero_grad()
         costs.mean().backward()
         self.optimizer.step()
+        return costs
 
 if __name__ == "__main__":
     
@@ -261,7 +356,7 @@ if __name__ == "__main__":
     state_dim = 1
     action_dim = 1
     log_interval = 500  # print avg cost in the interval
-    max_episodes = 10000  # max training episodes
+    max_episodes = 5000000  # max training episodes
     max_timesteps = 10  # max timesteps in one episode
     
     n_latent_var = 1  # number of variables in hidden layer
@@ -269,10 +364,12 @@ if __name__ == "__main__":
     gamma = 0.99  # discount factor
     sigma = 0.1  # std dev of exploratory policy
     
-    lr = 1e-5
+    lr = 5e-7
     betas = (0.9, 0.999)  # parameters for Adam optimizer
     
     random_seed = 1
+    
+    state_tol = 0.01
     #############################################
     
     if random_seed:
@@ -284,11 +381,11 @@ if __name__ == "__main__":
     pg = PG(state_dim, action_dim, n_latent_var, lr, betas, gamma)
     
     # Optimal control for comparison
-    K, P, _ = control.dlqr(A, B, Q, R)
-    optimal_params = torch.FloatTensor([-K.item(),0.])
+    # K, P, _ = control.dlqr(A, B, Q, R)
+    # optimal_params = torch.FloatTensor([-K.item(),0.])
     
     # compare initial policy with optimal
-    compare_P(pg.policy.agent, K, actor_label="Initial Policy")
+    # compare_P(pg.policy.agent, K, actor_label="Initial Policy")
     
     # important parameters
     print(f"device: {device}, lr: {lr}, betas: {betas}")
@@ -297,8 +394,8 @@ if __name__ == "__main__":
     running_cost = 0
     
     # pre-images
-    x_0 = -1.9837
-    y_0 = -1.9935
+    x_0 = -117/59
+    y_0 = -588/295
     
     # training loop
     for i_episode in range(1, max_episodes + 1):
@@ -307,43 +404,52 @@ if __name__ == "__main__":
         # if np.random.uniform(0, 1) < 2.78e-10:
         #     state = torch.uniform(-5,5, size=(1,1))
         # else:
-        if np.random.uniform(0,1) < 0.5:
-            state = torch.tensor([[x_0]])
-        else:
-            state = torch.tensor([[y_0]])
+        # if np.random.uniform(0,1) < 0.5:
+        #     state = torch.tensor([[x_0]])
+        # else:
+        #     state = torch.tensor([[y_0]])
         
+        state = torch.tensor([[x_0]])   
         done = False
-        for t in range(max_timesteps):
-            # Running exploratory policy
-            action = pg.select_action(state, memory) # + torch.normal(0, sigma, size=(1, 1))
+        while not done:
+            action = pg.select_action(state, memory) 
     
             cost = state * torch.FloatTensor(Q) * state + action * torch.FloatTensor(R) * action
     
-            # if np.random.uniform(0, 1) > gamma:
-            #     state = torch.normal(0, 1, size=(1, 1))
-            # else:
-            #     state = torch.FloatTensor(A) * state + torch.FloatTensor(B) * action
-    
             state = torch.FloatTensor(A) * state + torch.FloatTensor(B) * action
-    
+            done = (-state_tol < state < state_tol)  # if state is basically zero
+        
             # Saving cost and is_terminals:
             memory.costs.append(cost)
             memory.is_terminals.append(done)
     
             running_cost += cost.item()
             
-            if done:
-                break
+        state = torch.tensor([[y_0]])
+        done = False
+        while not done:
+            action = pg.select_action(state, memory) 
     
-        if i_episode % log_interval == 0:
-            pg.update(memory)
+            cost = state * torch.FloatTensor(Q) * state + action * torch.FloatTensor(R) * action
+    
+            state = torch.FloatTensor(A) * state + torch.FloatTensor(B) * action
+            done = (-state_tol < state < state_tol)  # if state is basically zero
         
+            # Saving cost and is_terminals:
+            memory.costs.append(cost)
+            memory.is_terminals.append(done)
+    
+            running_cost += cost.item()
+    
+        if i_episode % 1 == 0:
+            pg.update(memory)
             memory.clear_memory()
     
         # logging
         if i_episode % log_interval == 0:
             print('Episode {} \t Avg cost: {:.2f}'.format(i_episode, running_cost / log_interval))
-            print('\t Distance to optimal parameters: {:.2f}'.format(torch.norm(torch.tensor(list(pg.policy.agent.parameters()))-optimal_params), 2))
+            # print('\t Distance to optimal parameters: {:.2f}'.format(torch.norm(torch.tensor(list(pg.policy.agent.parameters()))-optimal_params), 2))
+            print(list(pg.policy.agent.parameters()))
             running_cost = 0
     
     print(list(pg.policy.agent.parameters()))
